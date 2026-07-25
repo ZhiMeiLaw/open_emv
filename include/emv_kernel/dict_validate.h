@@ -8,6 +8,7 @@
 
 #include "emv_kernel/types.h"
 #include "emv_kernel/warehouse.h"
+#include "emv_kernel/errors.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -18,7 +19,7 @@ extern "C" {
  * in the warehouse with valid lengths.
  * @param dict  Kernel dictionary to validate against.
  * @param wh    Warehouse to check.
- * @return 0 on success, -1 if a mandatory tag is missing or invalid.
+ * @return DICT_E_OK on success, DICT_E_MISSING if a mandatory tag is missing or invalid.
  */
 int tlv_validate_dict(const kernel_dict_t *dict, const tx_warehouse_t *wh);
 
@@ -26,7 +27,7 @@ int tlv_validate_dict(const kernel_dict_t *dict, const tx_warehouse_t *wh);
  * Validate a single tag's length constraints.
  * @param item  Dictionary item describing the tag.
  * @param wh    Warehouse containing the actual value.
- * @return 0 if valid, -1 if length out of range.
+ * @return DICT_E_OK if valid, DICT_E_BAD_LENGTH if length out of range.
  */
 int tlv_validate_tag_length(const dict_item_t *item, const tx_warehouse_t *wh);
 

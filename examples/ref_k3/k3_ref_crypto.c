@@ -16,6 +16,7 @@
 
 #include "emv_kernel/types.h"
 #include "emv_kernel/kernel_interface.h"
+#include "emv_kernel/errors.h"
 #include <string.h>
 
 /* ================================================================== */
@@ -51,9 +52,9 @@ static int ref_rsa_pkpad_verify(const uint8_t *cert_der, size_t cert_len,
      *
      * Mock: Just validate buffer sizes and return success
      */
-    if (!cert_der || cert_len == 0) return -1;
-    if (!ddic || ddic_len == 0) return -1;
-    if (!data || data_len == 0) return -1;
+    if (!cert_der || cert_len == 0) return CRYPTO_E_INVAL;
+    if (!ddic || ddic_len == 0) return CRYPTO_E_INVAL;
+    if (!data || data_len == 0) return CRYPTO_E_INVAL;
     return 0;  // Mock: assume verification passes
 }
 
@@ -84,9 +85,9 @@ static int ref_des_decrypt(const uint8_t *key, size_t key_len,
      * Step 3: Result is the Dynamic Number (DN)
      *         DN length is typically 4 bytes (for CDOL1 unpredictable num)
      */
-    if (!key || !ic_data || !out || !out_len) return -1;
-    if (key_len != 8 && key_len != 16) return -1;  // DES or TDES key
-    if (ic_data_len == 0) return -1;
+    if (!key || !ic_data || !out || !out_len) return CRYPTO_E_INVAL;
+    if (key_len != 8 && key_len != 16) return CRYPTO_E_INVAL;  // DES or TDES key
+    if (ic_data_len == 0) return CRYPTO_E_INVAL;
 
     /* Mock: copy input to output as-is (real impl would actually decrypt) */
     size_t copy_len = ic_data_len < *out_len ? ic_data_len : *out_len;
@@ -120,8 +121,8 @@ static int ref_tdes_mac_verify(const uint8_t *key, size_t key_len,
      * Step 3: Compare with ICC CRT [9F7E] from card
      *         return memcmp(computed_mac, expected_mac, mac_len) == 0 ? 0 : -1;
      */
-    if (!key || !data || !expected_mac) return -1;
-    if (key_len != 16) return -1;  // Must be 3DES key (2-key or 3-key TDES)
+    if (!key || !data || !expected_mac) return CRYPTO_E_INVAL;
+    if (key_len != 16) return CRYPTO_E_INVAL;  // Must be 3DES key (2-key or 3-key TDES)
 
     /* Mock: compare expected with a dummy value (0xAA repeated) */
     uint8_t dummy_mac[8];
@@ -168,7 +169,7 @@ static int ref_generate_cryptogram(crypto_alg_t alg,
      * For CAC (Kernel 5), the process is similar but uses a different key.
      */
     (void)key_index;
-    if (!key || !dol_data || dol_len == 0) return -1;
+    if (!key || !dol_data || dol_len == 0) return CRYPTO_E_INVAL;
 
     /* Mock: produce a dummy 8-byte cryptogram */
     memset(cryptogram, 0xDE, 8);  /* 0xDEADBEEF... pattern */
@@ -210,8 +211,8 @@ static int ref_ica_key_extract(const uint8_t *cert_der, size_t cert_len,
      *         DER-sequence { moduli: INTEGER, exponent: INTEGER }
      *         Typically 256 bytes modulus (RSA-2048)
      */
-    if (!cert_der || cert_len == 0) return -1;
-    if (!sym_key_len || !pub_key_len) return -1;
+    if (!cert_der || cert_len == 0) return CRYPTO_E_INVAL;
+    if (!sym_key_len || !pub_key_len) return CRYPTO_E_INVAL;
 
     /* Mock: fill with placeholder keys */
     if (*sym_key_len >= 8) {

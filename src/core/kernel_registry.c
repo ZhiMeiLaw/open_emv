@@ -4,30 +4,29 @@
  */
 
 #include "emv_kernel/kernel_registry.h"
+#include "emv_kernel/errors.h"
 #include <string.h>
 
-/* Dispatch table — fixed size, no dynamic allocation */
 static kernel_config_t g_table[MAX_KERNEL_ENTRIES];
 static uint8_t g_count = 0;
 
 int kernel_register(const kernel_config_t *config)
 {
-    if (!config || config->kernel_id == 0) return -2;
+    if (!config || config->kernel_id == 0) return KREG_E_INVAL;
 
-    /* Check for duplicate */
     for (uint8_t i = 0; i < g_count; i++) {
         if (g_table[i].kernel_id == config->kernel_id) {
-            return -2;  /* Duplicate */
+            return KREG_E_DUP;
         }
     }
 
     if (g_count >= MAX_KERNEL_ENTRIES) {
-        return -1;  /* Table full */
+        return KREG_E_FULL;
     }
 
-    g_table[g_count] = *config;  /* Shallow copy of pointer fields */
+    g_table[g_count] = *config;
     g_count++;
-    return 0;
+    return KREG_E_OK;
 }
 
 const kernel_config_t *kernel_lookup(uint8_t kernel_id)

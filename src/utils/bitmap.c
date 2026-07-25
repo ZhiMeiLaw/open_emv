@@ -4,10 +4,7 @@
  */
 
 #include "emv_kernel/bitmap.h"
-
-/* ------------------------------------------------------------------ */
-/*  AIP parse                                                         */
-/* ------------------------------------------------------------------ */
+#include "emv_kernel/errors.h"
 
 void aip_parse(const uint8_t *aip_bytes, uint8_t aip_len, aip_fields_t *out)
 {
@@ -24,10 +21,6 @@ void aip_parse(const uint8_t *aip_bytes, uint8_t aip_len, aip_fields_t *out)
     out->reserved_b2 = aip_len > 1 ? aip_bytes[1] : 0;
 }
 
-/* ------------------------------------------------------------------ */
-/*  AUC parse                                                         */
-/* ------------------------------------------------------------------ */
-
 void auc_parse(const uint8_t *auc_bytes, uint8_t auc_len, auc_fields_t *out)
 {
     if (!auc_bytes || !out || auc_len == 0) return;
@@ -37,10 +30,6 @@ void auc_parse(const uint8_t *auc_bytes, uint8_t auc_len, auc_fields_t *out)
     out->reserved_b2 = auc_len > 1 ? auc_bytes[1] : 0;
     out->reserved_b3 = auc_len > 2 ? auc_bytes[2] : 0;
 }
-
-/* ------------------------------------------------------------------ */
-/*  Terminal Qualifiers parse                                         */
-/* ------------------------------------------------------------------ */
 
 void terminal_qualifiers_parse(const uint8_t *tq_bytes, uint8_t tq_len, terminal_qualifiers_t *out)
 {
@@ -75,13 +64,9 @@ void terminal_qualifiers_parse(const uint8_t *tq_bytes, uint8_t tq_len, terminal
     }
 }
 
-/* ------------------------------------------------------------------ */
-/*  TVR to hex                                                        */
-/* ------------------------------------------------------------------ */
-
 int tvr_to_hex(const uint8_t *tvr, uint8_t len, char *hex_out, uint8_t hex_max)
 {
-    if (!tvr || !hex_out || hex_max < len * 2 + 1) return -1;
+    if (!tvr || !hex_out || hex_max < len * 2 + 1) return TLVE_E_INVAL;
 
     for (uint8_t i = 0; i < len && i < 5; i++) {
         const char hx[] = "0123456789ABCDEF";

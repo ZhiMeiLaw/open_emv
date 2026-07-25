@@ -20,15 +20,16 @@
 #define ESR_TAG_SUPPORTED           0x01   /* Application preferred name supported   */
 #define ESR_LOG_RECORD_SUPPORTED    0x02   /* Log record entry supported             */
 
-/* ---- Outcome codes for entry point functions ---- */
-#define EP_OK                0
-#define EP_CARD_NOT_FOUND   -1
-#define EP_COMM_ERROR       -2
-#define EP_AUTH_FAILED      -3
-#define EP_SELECT_FAILED    -4
-#define EP_GPO_FAILED       -5
-#define EP_PROFILE_FAILED   -6
-#define EP_UNSUPPORTED_CARD -7
+/* ---- Entry Point error codes (Book B flow) ---- */
+#define EP_E_OK                    0   /**< Full entry point flow succeeded       */
+#define EP_E_NO_CARD              -40   /**< Card not detected within timeout     */
+#define EP_E_COMM                 -41   /**< APDU / ISO-DEP communication error   */
+#define EP_E_AUTH                 -42   /**< SDA/ODA card authentication failed   */
+#define EP_E_SELECT               -43   /**< Application select (AID match) fail  */
+#define EP_E_GPO                  -44   /**< Get Processing Options failed        */
+#define EP_E_PROFILE              -45   /**< ERP profile exchange failed          */
+#define EP_E_UNSUPPORTED          -46   /**< Card lacks required capabilities     */
+#define EP_E_INVAL                -1   /**< Null context or IC reader provider   */
 
 /* Forward declaration of IC reader provider interface */
 struct ic_reader_provider_s;

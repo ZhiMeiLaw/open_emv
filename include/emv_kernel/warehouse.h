@@ -10,6 +10,7 @@
 #define EMV_KERNEL_WAREHOUSE_H
 
 #include "emv_kernel/types.h"
+#include "emv_kernel/errors.h"
 
 /* ------------------------------------------------------------------ */
 /*  Initialization / lifecycle                                        */
@@ -39,13 +40,13 @@ uint8_t *tlv_alloc(tx_warehouse_t *wh, uint16_t bytes);
 /**
  * Store a value in the warehouse under the given tag.
  * If tag already exists, replaces the old entry.
- * @return 0 on success, -1 on OOM, -2 on invalid arg.
+ * @return WH_E_OK on success, WH_E_OOM on OOM, WH_E_INVAL on invalid arg.
  */
 int tlv_store_set(tx_warehouse_t *wh, uint32_t tag, const uint8_t *src, uint16_t len);
 
 /**
  * Store a value with an explicit index (for duplicate tags).
- * @return 0 on success, -1 on OOM, -2 on invalid arg.
+ * @return WH_E_OK on success, WH_E_OOM on OOM, WH_E_INVAL on invalid arg.
  */
 int tlv_store_set_indexed(tx_warehouse_t *wh, uint32_t tag, uint8_t index,
                           const uint8_t *src, uint16_t len);
@@ -56,7 +57,7 @@ int tlv_store_set_indexed(tx_warehouse_t *wh, uint32_t tag, uint8_t index,
  * @param tag      Tag number
  * @param dst      Output buffer
  * @param out_len  In: max bytes; Out: actual bytes copied
- * @return 0 on success, -1 if tag not found.
+ * @return WH_E_OK on success, WH_E_NOTFOUND if tag not found.
  */
 int tlv_store_get(const tx_warehouse_t *wh, uint32_t tag, uint8_t *dst, uint16_t *out_len);
 
@@ -68,7 +69,7 @@ int tlv_store_get_indexed(const tx_warehouse_t *wh, uint32_t tag, uint8_t index,
 
 /**
  * Delete an entry by tag.
- * @return 0 on success, -1 if not found.
+ * @return WH_E_OK on success, WH_E_NOTFOUND if not found.
  */
 int tlv_store_delete(tx_warehouse_t *wh, uint32_t tag);
 

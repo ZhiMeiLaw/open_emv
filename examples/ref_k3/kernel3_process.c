@@ -12,6 +12,7 @@
 #include "emv_kernel/kernel_registry.h"
 #include "emv_kernel/orchestrator.h"
 #include "emv_kernel/kernel_interface.h"
+#include "emv_kernel/errors.h"
 
 /* Forward declarations from sibling files */
 extern struct cvm_plugin_s kernel3_cvm_plugin;
@@ -62,7 +63,7 @@ int kernel3_execute_transaction(ep_context_t *ep_ctx,
     const crypto_driver_t *crypto = platform_get_crypto();
     orchestrator_ctx_t oc;
     rc = orchestrator_init(&oc, crypto, NULL, pos_params);
-    if (rc != 0) return -1;
+    if (rc != EMV_E_OK) return ORCH_E_CRYPTO;
 
     /* Step 3: Execute K3 */
     rc = orchestrator_execute(3);  /* kernel_id = 3 */

@@ -12,6 +12,7 @@
 
 #include "emv_kernel/types.h"
 #include "emv_kernel/kernel_interface.h"
+#include "emv_kernel/errors.h"
 
 /* ------------------------------------------------------------------ */
 /*  POSIX/Windows optional includes                                   */
@@ -31,7 +32,7 @@
  * @param tag   EMV tag number (e.g., 0x9F02, 0x9F66)
  * @param buf   Output buffer
  * @param len   In: max bytes; Out: actual bytes read
- * @return 0 on success, -ENOENT if tag not configured, other negative on error.
+ * @return PLAT_E_OK on success, PLAT_E_NOTCONF if tag not configured.
  *
  * Integrator implements this to read from flash, NV storage, config file, etc.
  */
@@ -42,7 +43,7 @@ int param_read(uint16_t tag, uint8_t *buf, uint8_t *len);
  * @param tag   EMV tag number
  * @param value Data to write
  * @param len   Length of data
- * @return 0 on success.
+ * @return PLAT_E_OK on success.
  */
 int param_write(uint16_t tag, const uint8_t *value, uint8_t len);
 
@@ -76,7 +77,7 @@ enum {
  * @param field_id   Field identifier from ICCDB_FIELD_*
  * @param buf        Output buffer
  * @param len        In: max bytes; Out: actual bytes read
- * @return 0 on success, -ENOENT if card/hash not found.
+ * @return PLAT_E_OK on success, PLAT_E_NOTSTORED if card/field not found.
  */
 int iccdb_read(const uint8_t *card_hash, uint8_t field_id,
                uint8_t *buf, uint8_t *len);
@@ -89,11 +90,9 @@ int iccdb_write(const uint8_t *card_hash, uint8_t field_id,
 
 /**
  * Delete all ICCDB data for a card.
+ * @return PLAT_E_OK on success, PLAT_E_NOTSTORED if card hash not found.
  */
-int iccdb_delete(const uint8_t *card_hash);
-
-
-/* ------------------------------------------------------------------ */
+int iccdb_delete(const uint8_t *card_hash);/* ------------------------------------------------------------------ */
 /*  PRNG (Pseudo-Random Number Generator)                             */
 /* ------------------------------------------------------------------ */
 
@@ -102,7 +101,7 @@ int iccdb_delete(const uint8_t *card_hash);
  * Used for CDOL1 unpredictable number generation (ISO 14443-4).
  * @param buf Output buffer
  * @param len Number of bytes required
- * @return 0 on success, non-zero if entropy unavailable.
+ * @return PLAT_E_OK on success, non-zero if entropy unavailable.
  */
 int platform_prng(uint8_t *buf, uint16_t len);
 
@@ -125,13 +124,13 @@ uint32_t platform_time_get_ms(void);
 /**
  * Register the crypto driver provided by the integrator.
  * Must be called before any kernel execution.
- * @return 0 on success.
+ * @return PLAT_E_OK on success.
  */
 int platform_register_crypto(const crypto_driver_t *driver);
 
 /**
  * Register the terminal/acquirer interface.
- * @return 0 on success.
+ * @return PLAT_E_OK on success.
  */
 int platform_register_acq_iface(const term_acq_interface_t *iface);
 

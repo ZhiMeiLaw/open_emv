@@ -4,44 +4,40 @@
  */
 
 #include "emv_kernel/dict_validate.h"
-#include <string.h>
+#include "emv_kernel/errors.h"
 
 int tlv_validate_dict(const kernel_dict_t *dict, const tx_warehouse_t *wh)
 {
-    if (!dict || !wh) return -1;
+    if (!dict || !wh) return DICT_E_INVAL;
 
     for (uint8_t i = 0; i < dict->item_count; i++) {
         const dict_item_t *item = &dict->items[i];
-
-        /* Check mandatory tags only */
         if (!item->mandatory) continue;
 
-        /* Find the tag in warehouse */
         const tlv_entry_t *entry = tlv_find(wh, item->tag);
         if (!entry) {
-            return -1;  /* Mandatory tag missing */
+            return DICT_E_MISSING;
         }
 
-        /* Validate length constraints */
         if (entry->len < item->min_len || entry->len > item->max_len) {
-            return -1;  /* Length out of range */
+            return DICT_E_BAD_LENGTH;
         }
     }
 
-    return 0;
+    return DICT_E_OK;
 }
 
 int tlv_validate_tag_length(const dict_item_t *item, const tx_warehouse_t *wh)
 {
-    if (!item || !wh) return -1;
+    if (!item || !wh) return DICT_E_INVAL;
 
     const tlv_entry_t *entry = tlv_find(wh, item->tag);
-    if (!entry) return -1;
+    if (!entry) return DICT_E_MISSING;
 
     if (entry->len < item->min_len || entry->len > item->max_len) {
-        return -1;
+        return DICT_E_BAD_LENGTH;
     }
-    return 0;
+    return DICT_E_OK;
 }
 
 const char *dict_get_tag_description(const kernel_dict_t *dict, uint32_t tag)

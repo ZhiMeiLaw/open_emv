@@ -7,6 +7,7 @@
 #define EMV_KERNEL_KERNEL_REGISTRY_H
 
 #include "emv_kernel/types.h"
+#include "emv_kernel/errors.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -15,7 +16,7 @@ extern "C" {
 /**
  * Register a kernel configuration into the dispatch table.
  * @param config Pointer to caller-owned kernel_config_t (or kernel_dict_t).
- * @return 0 on success, -1 if table is full, -2 if duplicate kernel_id.
+ * @return KREG_E_OK on success, KREG_E_FULL if table is full, KREG_E_DUP if duplicate kernel_id.
  */
 int kernel_register(const kernel_config_t *config);
 

@@ -12,6 +12,7 @@
 #include "emv_kernel/types.h"
 #include "emv_kernel/warehouse.h"
 #include "emv_kernel/platform.h"
+#include "emv_kernel/errors.h"
 #include <string.h>
 
 /* ================================================================== */
@@ -70,37 +71,36 @@ static void pos_params_init_defaults(void)
 /* ---- param_read implementation ---- */
 int param_read(uint16_t tag, uint8_t *buf, uint8_t *len)
 {
-    if (!buf || !len) return -1;
+    if (!buf || !len) return PLAT_E_INVAL;
 
     for (uint8_t i = 0; i < g_pos_param_count; i++) {
         if (g_pos_params[i].tag == tag) {
             uint8_t copy_len = g_pos_params[i].len < *len ? g_pos_params[i].len : *len;
             memcpy(buf, g_pos_params[i].value, copy_len);
             *len = copy_len;
-            return 0;
+            return EMV_E_OK;
         }
     }
 
-    /* Tag not found */
-    return -2;
+    return PLAT_E_NOTCONF;
 }
 
 /* ---- param_write implementation ---- */
 int param_write(uint16_t tag, const uint8_t *value, uint8_t len)
 {
-    if (!value || len == 0 || len > 16) return -1;
+    if (!value || len == 0 || len > 16) return PLAT_E_INVAL;
 
     /* Try to update existing entry */
     for (uint8_t i = 0; i < g_pos_param_count; i++) {
         if (g_pos_params[i].tag == tag) {
             g_pos_params[i].len = len;
             memcpy(g_pos_params[i].value, value, len);
-            return 0;
+            return EMV_E_OK;
         }
     }
 
     /* Add new entry */
-    if (g_pos_param_count >= MAX_POS_PARAMS) return -3;
+    if (g_pos_param_count >= MAX_POS_PARAMS) return PLAT_E_STORE_FULL;
 
     g_pos_params[g_pos_param_count].tag = tag;
     g_pos_params[g_pos_param_count].len = len;
@@ -152,13 +152,13 @@ static iccdb_entry_t *iccdb_get_free_slot(void)
 int iccdb_read(const uint8_t *card_hash, uint8_t field_id,
                uint8_t *buf, uint8_t *len)
 {
-    if (!card_hash || !buf || !len) return -1;
+    if (!card_hash || !buf || !len) return PLAT_E_INVAL;
 
     iccdb_entry_t *entry = iccdb_find(card_hash);
-    if (!entry) return -2;  /* Card not found */
+    if (!entry) return PLAT_E_NOTSTORED;  /* Card not found */
 
     if (field_id >= ICCDB_FIELD_MAX || entry->field_lens[field_id] == 0) {
-        return -3;  /* Field not set */
+        return PLAT_E_NOTSTORED;  /* Field not set */
     }
 
     uint8_t copy_len = entry->field_lens[field_id] < *len ?
@@ -172,13 +172,13 @@ int iccdb_read(const uint8_t *card_hash, uint8_t field_id,
 int iccdb_write(const uint8_t *card_hash, uint8_t field_id,
                 const uint8_t *value, uint8_t len)
 {
-    if (!card_hash || !value || len == 0) return -1;
-    if (field_id >= ICCDB_FIELD_MAX) return -1;
+    if (!card_hash || !value || len == 0) return PLAT_E_INVAL;
+    if (field_id >= ICCDB_FIELD_MAX) return PLAT_E_INVAL;
 
     iccdb_entry_t *entry = iccdb_find(card_hash);
     if (!entry) {
         entry = iccdb_get_free_slot();
-        if (!entry) return -2;  /* Store full */
+        if (!entry) return PLAT_E_STORE_FULL;  /* Store full */
 
         memset(entry, 0, sizeof(*entry));
         memcpy(entry->card_hash, card_hash, 16);
@@ -194,10 +194,10 @@ int iccdb_write(const uint8_t *card_hash, uint8_t field_id,
 /* ---- iccdb_delete implementation ---- */
 int iccdb_delete(const uint8_t *card_hash)
 {
-    if (!card_hash) return -1;
+    if (!card_hash) return PLAT_E_INVAL;
 
     iccdb_entry_t *entry = iccdb_find(card_hash);
-    if (!entry) return -2;
+    if (!entry) return PLAT_E_NOTSTORED;
 
     memset(entry, 0, sizeof(*entry));
     entry->in_use = 0;
@@ -214,7 +214,7 @@ static uint32_t g_prng_state = 0xDEADBEEF;
 
 int platform_prng(uint8_t *buf, uint16_t len)
 {
-    if (!buf) return -1;
+    if (!buf) return PLAT_E_INVAL;
 
     for (uint16_t i = 0; i < len; i++) {
         /* Linear congruential generator (NOT cryptographically secure!) */
@@ -266,7 +266,7 @@ uint32_t platform_time_get_ms(void)
  */
 int k3_load_pos_params_to_warehouse(tx_warehouse_t *wh)
 {
-    if (!wh) return -1;
+    if (!wh) return PLAT_E_INVAL;
 
     /* K3 TDOL tags that come from terminal */
     uint16_t tdol_tags[] = { 0x9F16, 0x9F02, 0x9F36, 0x9F03, 0x5F2A, 0x9F66 };

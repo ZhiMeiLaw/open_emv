@@ -15,6 +15,7 @@
  */
 
 #include "emv_kernel/entry_point.h"
+#include "emv_kernel/errors.h"
 #include <string.h>
 
 /* ================================================================== */
@@ -47,7 +48,7 @@ static int mock_poll_card(uint32_t timeout_ms)
 {
     (void)timeout_ms;
 
-    if (!g_card.field_on) return -1;
+    if (!g_card.field_on) return EP_E_INVAL;
 
     /* Load mock ATS response */
     /* Real implementation: read ATQ response from ISO 14443-3 ATRQ */
@@ -160,7 +161,7 @@ static int mock_transceive(const uint8_t *send_buf, uint16_t send_len,
                            uint8_t *recv_buf, uint16_t recv_max,
                            uint16_t *recv_len)
 {
-    if (!send_buf || send_len == 0) return -1;
+    if (!send_buf || send_len == 0) return EP_E_INVAL;
 
     uint8_t cla = send_buf[0];
     uint8_t ins = send_buf[1];

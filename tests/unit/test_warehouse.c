@@ -8,8 +8,8 @@
 
 #include <stdio.h>
 #include <string.h>
-#include "emv_kernel/types.h"
 #include "emv_kernel/warehouse.h"
+#include "emv_kernel/errors.h"
 
 static int g_tests_run = 0;
 static int g_tests_fail = 0;
@@ -81,7 +81,7 @@ TEST(test_get_missing_tag) {
     uint8_t buf[4] = {0};
     uint16_t blen = 4;
     int rc = tlv_store_get(&wh, 0xFFFF, buf, &blen);
-    ASSERT_EQ(rc, -1, "get missing tag returns -1");
+    ASSERT_EQ(rc, WH_E_NOTFOUND, "get missing tag returns NOTFOUND");
 }
 
 /* ---- Test: replace existing tag ---- */
@@ -164,7 +164,7 @@ TEST(test_oom) {
     /* Try to store a 10-byte value into an 8-byte pool */
     uint8_t big_val[10] = {0};
     int rc = tlv_store_set(&wh, 0x99, big_val, 10);
-    ASSERT_EQ(rc, -1, "store fails on OOM");
+    ASSERT_EQ(rc, WH_E_OOM, "store fails on OOM");
 }
 
 /* ---- Test: store zero-length rejected ---- */
@@ -174,7 +174,7 @@ TEST(test_zero_len_rejected) {
     tlv_warehouse_init(&wh, pool, sizeof(pool));
 
     int rc = tlv_store_set(&wh, 0x11, NULL, 0);
-    ASSERT_EQ(rc, -2, "zero-len set returns -2");
+    ASSERT_EQ(rc, WH_E_INVAL, "zero-len set returns INVAL");
 }
 
 /* ---- Run all tests ---- */

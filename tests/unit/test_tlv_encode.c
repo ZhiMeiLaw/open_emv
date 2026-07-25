@@ -8,6 +8,7 @@
 #include "emv_kernel/types.h"
 #include "emv_kernel/tlv_encode.h"
 #include "emv_kernel/warehouse.h"
+#include "emv_kernel/errors.h"
 
 static int g_tests_run = 0;
 static int g_tests_fail = 0;

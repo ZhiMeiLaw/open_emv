@@ -12,6 +12,7 @@
 #include "emv_kernel/warehouse.h"
 #include "emv_kernel/kernel_interface.h"
 #include "emv_kernel/platform.h"
+#include "emv_kernel/errors.h"
 
 /* ================================================================== */
 /*  check: run risk checks per category                               */
@@ -61,7 +62,7 @@ static risk_result_t kernel3_risk_check(const void *ctx_ptr, risk_check_type_t t
 
 static int kernel3_risk_build_tc(const void *ctx_ptr, tx_warehouse_t *tc_wh)
 {
-    if (!ctx_ptr || !tc_wh) return -1;
+    if (!ctx_ptr || !tc_wh) return PLAT_E_INVAL;
 
     const orchestrator_ctx_t *oc = (const orchestrator_ctx_t *)ctx_ptr;
 
