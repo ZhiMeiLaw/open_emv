@@ -1,8 +1,7 @@
 /**
- * @file examples/ref_k5/kernel5_risk.c
- * @brief Kernel 5 (qVISA) reference Risk plugin.
- *
- * K5 has simplified risk management:
+ * @file src/plugin/risk_plugin_kernel5.c
+ * @brief Kernel 5 (qVISA) reference Risk plugin — simplified per Book C-5.
+ */
  *   - No CRM (card doesn't perform risk checks in qVISA flow)
  *   - No VEL (velocity enforcement is offloaded to issuer)
  *   - Only amount limit check (handled by CVM plugin)

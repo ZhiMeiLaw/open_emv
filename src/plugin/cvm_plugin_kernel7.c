@@ -1,6 +1,6 @@
 /**
- * @file examples/ref_k7/kernel7_cvm.c
- * @brief Kernel 7 (Token Payment) reference CVM plugin skeleton.
+ * @file src/plugin/cvm_plugin_kernel7.c
+ * @brief Kernel 7 (Token Payment) reference CVM plugin skeleton per Book C-7 Section 4.4.
  *
  * Per Book C-7 Section 4.4, K7 CVM logic is nearly identical to K3:
  *   - Uses CTQ (Tag 9F6C) from GPO response — NOT 9F50 (that's K5 only)

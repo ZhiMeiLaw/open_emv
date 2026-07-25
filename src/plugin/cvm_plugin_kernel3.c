@@ -1,8 +1,7 @@
 /**
- * @file examples/ref_k3/kernel3_cvm.c
+ * @file src/plugin/cvm_plugin_kernel3.c
  * @brief Kernel 3 reference CVM plugin per Book C-3 Section 5.7.
- *
- * Book C-3 K3 CVM decision tree:
+ */
  *
  *   Step 1: Check Terminal Qualifiers (Tag 9F6C) from GPO response.
  *           CTQ is parsed as a bitmap of CVM requirements.
@@ -19,23 +18,10 @@
  *           3) No CVM support at all?            → Decline Required flag
  *
  *   Step 4: Populate CVM Results Tag [9F34] per outcome.
- *           Byte 1: CVM method code
+ *           Byte 1: CVM method code (per Table A-4-1)
  *           Byte 2: Always 0x00
- *           Byte 3: Result status (known/successful/unknown)
+ *           Byte 3: Result status (0x00=unknown, 0x02=success)
  */
-
-#include "emv_kernel/types.h"
-#include "emv_kernel/warehouse.h"
-#include "emv_kernel/kernel_interface.h"
-#include "emv_kernel/platform.h"
-#include "emv_kernel/bitmap.h"
-
-/* Forward declaration — integrator provides this structure */
-typedef struct {
-    uint32_t unsigned_limit;      /* Amount below which No-CVM applies     */
-    uint32_t signed_limit;        /* Amount above which online auth req'd   */
-    uint8_t  pin_key_index;       /* Key index for PIN encryption           */
-} pos_params_k3_t;
 
 /* ================================================================== */
 /*  Helper: extract value from warehouse                               */
@@ -100,10 +86,10 @@ static void ctq_parse(const uint8_t *ctq_bytes, uint8_t len, ctq_fields_t *out)
  *   Byte 2 = CVM condition (always 0x00)
  *   Byte 3 = CVM result (for certain methods)
  */
-static int build_cvm_results(tx_warehouse_t *wh, uint8_t cvm_method, uint8_t cvm_result_byte3)
+static int build_cvm_results(tx_warehouse_t *wh, uint8_t cvm_method, uint8_t result_b3)
 {
-    uint8_t result[] = { cvm_method, 0x00, cvm_result_byte3 };
-    return tlv_store_set(wh, 0x9F34, result, sizeof(result));
+    uint8_t data[] = { cvm_method, 0x00, result_b3 };
+    return tlv_store_set(wh, 0x9F34, data, sizeof(data));
 }
 
 /* ================================================================== */
@@ -114,15 +100,7 @@ static cvm_result_t kernel3_cvm_evaluate(const void *ctx_ptr)
 {
     const orchestrator_ctx_t *oc = (const orchestrator_ctx_t *)ctx_ptr;
     const pos_params_k3_t *pp = (const pos_params_k3_t *)oc->pos_params;
-
-    /* --- No POS params available ---
-     * Without config, we can't make amount-based decisions.
-     * Return PASS and let the risk/orchestrator layer handle limits.
-     */
-    if (!pp) {
-        build_cvm_results(&oc->output_wh, 0x1F, 0x00); /* No CVM */
-        return CVM_PASS;
-    }
+    if (!pp) return CVM_NOT_SUPPORTED;
 
     uint32_t amount = get_amount(&oc->input_wh);
 
@@ -195,18 +173,12 @@ static cvm_result_t kernel3_cvm_evaluate(const void *ctx_ptr)
         return CVM_PASS;
     }
 
-    /* ---- Path B: CTQ NOT returned from card (fallback logic) ---- */
-    /* Per Book C-3 §5.7.1.1 */
-
-    /* If amount <= unsigned limit → No-CVM */
+    /* ---- Path B: CTQ NOT returned from card (fallback) ---- */
     if (amount <= pp->unsigned_limit) {
         build_cvm_results(&oc->output_wh, 0x1F, 0x00);
         return CVM_PASS;
     }
-
-    /* Reader supports Signature? → request it */
-    /* (In practice, check TTQ bit 1 - but we'd need TTQ in context) */
-    /* For now, default to No-CVM when CTQ absent */
+    /* Fallback: No-CVM when CTQ absent */
     build_cvm_results(&oc->output_wh, 0x1F, 0x00);
     return CVM_PASS;
 }

@@ -1,8 +1,7 @@
 /**
- * @file examples/ref_k3/kernel3_risk.c
- * @brief Kernel 3 reference Risk plugin implementation.
- *
- * K3 Risk checks (Book A §6.2 + Book C §4.6):
+ * @file src/plugin/risk_plugin_kernel3.c
+ * @brief Kernel 3 reference Risk plugin implementation per Book A §6.2 + Book C §4.6.
+ */
  *   - TRM: Terminal Risk Management — VEL, frequency, amount limits
  *   - CRM: Card Risk Management — ICCDB-based card-side limits
  *   - SDS: Signature Data Set — token/cardholder verification

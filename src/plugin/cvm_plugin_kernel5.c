@@ -1,5 +1,5 @@
 /**
- * @file examples/ref_k5/kernel5_cvm.c
+ * @file src/plugin/cvm_plugin_kernel5.c
  * @brief Kernel 5 (qVISA) reference CVM plugin per Book C-5 Section 3.8.
  *
  * K5 CVM is fundamentally different from K3:
@@ -110,11 +110,9 @@ static cvm_result_t kernel5_cvm_evaluate(const void *ctx_ptr)
 
     /* Step 3: Consistency check — CVM Required by Reader indicator */
     /* TVR Byte 1 bit 8 = "CVM required by reader" */
-    const tlv_entry_t *tvr_entry = tlv_find(&oc->input_wh, 0x9F3A);
     if (cvm_method == 0x1F) {  /* No CVM indicated by card */
         /* If reader REQUIRED CVM but card says No-CVM, decline. */
         /* Check TVR byte 1 bit 8 via platform hook or warehouse */
-        /* (Implementation depends on whether TVR was parsed from card) */
         /* For reference: if TVR byte1 bit8==1 && cvm_no_cvm → DECLINE */
     }
 
@@ -134,7 +132,6 @@ check_limits:
     return CVM_PASS;
 }
 
-/* Helper: placeholder (needs access to output_wh store function) */
 static int build_cvm_results(tx_warehouse_t *wh, uint8_t method, uint8_t result_b3)
 {
     uint8_t data[] = { method, 0x00, result_b3 };
