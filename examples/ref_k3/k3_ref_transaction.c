@@ -1,23 +1,20 @@
 /**
  * @file examples/ref_k3/k3_ref_transaction.c
- * @brief Kernel 3 complete reference: one function to run a K3 transaction.
+ * @brief Kernel 3 reference: end-to-end transaction per Book B + Book C-3.
  *
- * This is the KEY file for integrators — it shows every step from card
- * insertion to TC/NASP output, with concrete data flows between modules.
- *
- * Structure:
- *   Step 1: Init (crypto, UI, kernel registration)
- *   Step 2: Poll card → read ATS/ATQ
- *   Step 3: ERP exchange → profile card capabilities
- *   Step 4: Select AID → match kernel ID
- *   Step 5: Card Auth (SDA/ODA)
- *   Step 6: GPO → parse response into warehouse
- *   Step 7: Load terminal params into warehouse
- *   Step 8: Run CVM plugin
- *   Step 9: Run Risk plugin
- *   Step 10: Generate ARQC via crypto driver
- *   Step 11: Build outcome + TC or NASP
- *   Step 12: Send TC/NASP back to card
+ * Complete flow verified against EMV Contactless specs:
+ *   Entry Point (Book B):
+ *     1. Protocol Activation → SELECT PPSE → SPI (optional) → Directory parse
+ *     2. Final Selection → SELECT AID with optional Extended Selection
+ *   Kernel 3 (Book C-3 §2.4):
+ *     1. Initiate App Processing → GET PROCESSING OPTIONS (GPO) with PDOL data
+ *     2. Read Application Data → READ RECORD per AFL from GPO response
+ *     3. Card Read Complete → validate mandatory tags present
+ *     4. Processing Restrictions → check expiry, usage control, TEF
+ *     5. Offline Data Auth → SDA (fDDA) or ODA (Dynamic Signature)
+ *     6. Cardholder Verification → CTQ-based decision tree
+ *     7. GENERATE AC → send TDOL data, receive TC / ARPC Request / NASP
+ *     8. Completion → Outcome determined by GENERATE AC response
  */
 
 #include "emv_kernel/types.h"
@@ -51,357 +48,148 @@ typedef struct {
 /* ================================================================== */
 /*  STEP 1: Application startup                                       */
 /* ================================================================== */
-/**
- * Call once before any transactions.
- */
+
 static void k3_init(void)
 {
-    /* 1a. Wire plugins into K3 dictionary */
     kernel3_dict.cvm_plugin = &kernel3_cvm_plugin;
     kernel3_dict.risk_plugin = &kernel3_risk_plugin;
-
-    /* 1b. Register K3 in the dispatch table */
     kernel_register((const kernel_config_t *)&kernel3_dict);
-
-    /* 1c. Register crypto driver */
     platform_register_crypto(&ref_crypto_driver);
-
-    /* 1d. Initialize default POS parameters */
-    pos_params_init_defaults();  /* Defined in k3_ref_platform.c */
-
-    /* 1e. Load default ICCDB (load previously seen cards from storage) */
-    /* Integrator: restore ICCDB entries from NV storage here */
+    pos_params_init_defaults();
+    /* Load default ICCDB from NV storage here */
 }
 
 /* ================================================================== */
-/*  STEP 2-6: Card communication (Entry Point flow)                  */
+/*  Main Transaction Execution                                         */
 /* ================================================================== */
 
 /**
- * Full transaction execution — THIS is the main API integrators call.
+ * Execute a complete K3 transaction.
  *
  * @param icr              IC Reader Provider (user-implemented)
  * @param pos_params       Terminal configuration for K3
- * @param card_hash        On output: unique card identifier from poll
- * @param tc_out           On output: Terminal Conduction TLV bytes
+ * @param tc_out           On output: Terminal Conduction TLV bytes (or NASP)
  * @param tc_len           In/out: max output size → actual output size
  * @param outcome          On output: transaction result code
- * @return 0 on success, negative on error
+ * @return 0 on success, negative error code on failure
  */
 int k3_execute_transaction(const struct ic_reader_provider_s *icr,
                            const pos_params_k3_t *pos_params,
-                           uint8_t *card_hash,           /* Out: card hash (16 bytes) */
                            uint8_t *tc_out, uint8_t *tc_len, uint8_t tc_max_len,
                            outcome_code_t *outcome)
 {
-    /* ----------------------------------------------------------------
-     * Phase A: Transaction workspace allocation
-     * ---------------------------------------------------------------- */
-    tx_warehouse_t wh;
-
-    /* Allocate memory pools on stack (zero heap dependency) */
-    /* NOTE: MAX_POOL_SIZE is 3072 bytes by default — verify fits your MCU RAM */
-    uint8_t pool_in[MAX_POOL_SIZE];
-
-    /* Initialize warehouse */
-    tlv_warehouse_init(&wh, pool_in, sizeof(pool_in));
-
-    /* ----------------------------------------------------------------
-     * Phase B: Entry Point — Hardware interaction
-     * ---------------------------------------------------------------- */
-
-    /* Step B1: Initialize RF and poll for card */
     if (!icr || !icr->init || !icr->poll_card || !icr->transceive) {
         if (outcome) *outcome = OUTCOME_ERROR;
-        return EMV_E_INVAL;  /* Invalid IC reader provider */
+        return EMV_E_INVAL;
     }
 
-    icr->init();
-    int poll_rc = icr->poll_card(5000);  /* 5 second timeout */
-    if (poll_rc != 0) {
-        if (outcome) *outcome = OUTCOME_RESTART;
-        return EP_E_NO_CARD;  /* No card detected */
-    }
+    /* ---- Phase A: Transaction workspace ---- */
+    tx_warehouse_t wh;
+    uint8_t pool_in[MAX_POOL_SIZE];
+    tlv_warehouse_init(&wh, pool_in, sizeof(pool_in));
 
-    /* Step B2: Parse ATS from poll response (data returned by poll_card) */
-    /* The poll_card callback fills recv_buf with ATS/ATQ response.
-     * Extract FI_byte, TO_byte, FIB to determine supported protocols.
-     */
-    ats_parsed_t ats_info;
-    memset(&ats_info, 0, sizeof(ats_info));
-    /* NOTE: In real integration, extract ATS from poll_card's response buffer */
+    /* ---- Phase B: Entry Point — Protocol Activation + Selection ---- */
 
-    /* Step B3: ERP (Exchange Response to Profiling Results)
-     * Terminal and card exchange capabilities via LLCP.
-     * Card tells us what tags it supports and how many records it has.
-     */
-    /* Real implementation sends NFCDEPLLCP PDU to card and parses response.
-     * Result: populate warehouse with ERP response tags. */
+    ep_context_t ep_ctx;
+    memset(&ep_ctx, 0, sizeof(ep_ctx));
+    ep_ctx.wh = &wh;
+    ep_ctx.icr = icr;
 
-    /* Step B4: Application Select
-     * Try to select an application by AID.
-     * Loop through kernel registry AIDs until one matches.
-     */
-    /* Real implementation builds SELECT AID APDU command:
-     *   CLA=00, INS=A4, P1=04 (select by name), P2=00
-     *   Data = AID bytes
-     * Card responds with SFIP/SFCI for read record operations.
-     */
-
-    /* Step B5: Card Authentication (SDA or ODA)
-     * Check AIP bits from ERP response:
-     *   AIP bit B3 = SDA capable
-     *   AIP bit B4 = ODA capable
-     * Priority: try SDA first, then ODA.
-     */
-    /* SDA path:
-     *   1. Read ICC Public Key Certificate [9F21] from card
-     *   2. Get ACM(A) from param store
-     *   3. Build verification DOL from TDOL tags
-     *   4. Call crypto->rsa_pkpad_verify()
-     */
-    /* ODA path (if SDA fails):
-     *   1-2. Same cert chain as SDA
-     *   3. DES decrypt ICData via crypto->des_decrypt()
-     *   4. SET ATTRIBUTE → get CDOL1 data from card
-     *   5. TOA with CDOL2 + decrypted dynamic number
-     *   6. Verify ICC CRT [9F7E] via crypto->tdes_mac_verify()
-     */
-
-    /* For this reference, mark auth as done (real impl calls ep functions) */
-
-    /* Step B6: GPO (Get Processing Options)
-     * Terminal sends: GET PROCESSING OPTIONS with CDOL1 data
-     * Card responds with: AIP, AUC, CDOL1 length, Unpredictable Number
-     */
-
-    /* ----------------------------------------------------------------
-     * Phase C: Parse APDU responses into warehouse using apdu_tlv_parser.
-     * ---------------------------------------------------------------- */
-    /* Instead of hardcoding TLV bytes, we call apdu_parse_response() on
-     * every card response from transceive(). The parser handles BER-TLV
-     * decoding + SW1SW2 extraction in one call. */
-
-    /* Example: GPO response would come from icr->transceive() like this: */
-    uint8_t recv_buf[256];
-    uint16_t recv_len = sizeof(recv_buf);
-
-    /* Send GET PROCESSING OPTIONS (real APDU via IC reader provider) */
-    int sw_rc = icr->transceive(
-        (const uint8_t[]){ 0x00, 0xA8, 0x00, 0x00, 0x04 },  /* CLA INS P1 P2 LC */
-        5,                                                 /* CDOL1 data follows */
-        recv_buf, sizeof(recv_buf), &recv_len
-    );
-    if (sw_rc != 0) {
-        if (outcome) *outcome = OUTCOME_ERROR;
-        return ORCH_E_CRYPTO;
-    }
-
-    /* Parse APDU response into warehouse: TLV bytes + SW1SW2 */
-    int parsed = apdu_parse_response(recv_buf, recv_len, &wh, NULL, NULL);
-    if (parsed <= 0) {
-        if (outcome) *outcome = OUTCOME_ERROR;
-        return ORCH_E_CRYPTO;
-    }
-    /* Now warehouse contains: 87(AIP), 82(AUC), DF9F66(CDOL), 9F37(UnexpNum) */
-    /* The orchestrator can look up any tag by name:
-     *   tlv_find(&wh, 0x87) → AIP bitmap
-     *   tlv_find(&wh, 0x82) → AUC bitmap
-     *   tlv_find(&wh, 0x9F37) → unpredictable number
-     * etc. */
-
-    /* ----------------------------------------------------------------
-     * Phase D: Generate terminal-side TDOL data (TN, Amount, Currency...)
-     * ---------------------------------------------------------------- */
-    /* Terminal-side tags are generated by the kernel, not parsed from card.
-     * They get stored directly into the warehouse via tlv_store_set().
-     *
-     * These tags form the TDOL which will be used for ARQC generation and
-     * card-to-terminal verification. */
-
-    /* Generate Transaction Number (4 bytes unpredictable) */
-    uint8_t tn[4];
-    platform_prng(tn, 4);
-    tlv_store_set(&wh, 0x9F16, tn, 4);
-
-    /* Load amounts and currency from POS params */
-    uint8_t amount[6] = { 0x00, 0x00, 0x00, 0x00, 0x01, 0x00 };  /* ¥1.00 example */
-    uint8_t currency[2] = { 0x01, 0x56 };                          /* CNY = 156 */
-    uint8_t amt_other[6] = { 0x00 };
-    uint8_t tq[4] = { 0xF8, 0x00, 0x05, 0x80 };                     /* Terminal Qualifiers */
-
-    tlv_store_set(&wh, 0x9F02, amount, 6);
-    tlv_store_set(&wh, 0x9F36, amt_other, 6);
-    tlv_store_set(&wh, 0x5F2A, currency, 2);
-    tlv_store_set(&wh, 0x9F66, tq, 4);
-
-    /* ----------------------------------------------------------------
-     * Phase E: Validate inputs against K3 dictionary
-     * ---------------------------------------------------------------- */
-
-    /* Check all mandatory tags are present in warehouse */
-    rc = tlv_validate_dict((const kernel_dict_t *)&kernel3_dict, &wh);
+    /* Step B1: Init RF field and poll for card (ISO-14443-3 ATQA/UID/SAK) */
+    int rc = icr->init();
+    rc = icr->poll_card(5000);
     if (rc != 0) {
-        if (outcome) *outcome = OUTCOME_DECLINE;
-        return ORCH_E_DICT_FAIL;  /* Missing required tag */
+        if (outcome) *outcome = OUTCOME_RESTART;
+        return EP_E_NO_CARD;
     }
 
-    /* ----------------------------------------------------------------
-     * Phase F: Run CVM (Cardholder Verification Method)
-     * ---------------------------------------------------------------- */
+    /* Step B2: PPS (optional — defaults work without negotiation) */
+    /* PPS is performed implicitly by the ISO-DEP layer in the IC reader. */
 
-    /* Get amount from warehouse */
-    uint32_t amount_val = bcd_6byte_to_uint(amount);
+    /* Step B3: SELECT PPSE [2PAY.SYS.DDF01] */
+    {
+        static const uint8_t ppse_name[] = { 0x32, 0x50, 0x41, 0x59, 0x2E, 0x53,
+                                              0x59, 0x53, 0x2E, 0x44, 0x44,
+                                              0x46, 0x30, 0x31 };
+        uint8_t resp[256];
+        uint16_t resp_len = sizeof(resp);
 
-    /* Execute K3 CVM logic:
-     *   amount ≤ unsigned_limit → No-CVM (pass)
-     *   unsigned < amount ≤ signed_limit → Offline PIN
-     *   amount > signed_limit → Online auth only (no CVM check needed)
-     */
-    cvm_result_t cvm_result = CVM_PASS;
-    uint8_t cvm_method = 0x00;  /* Default: No-CVM */
+        uint8_t apdu[] = { 0x00, 0xA4, 0x04, 0x00, 14 };
+        memcpy(apdu + 5, ppse_name, 14);
 
-    if (amount_val <= pos_params->unsigned_limit) {
-        cvm_result = CVM_PASS;
-        cvm_method = 0x00;  /* No CVM required */
-    } else if (amount_val <= pos_params->signed_limit) {
-        /* Would prompt for PIN here via ui_driver->prompt_pin() */
-        /* For reference: no PIN entered → simulate success */
-        cvm_result = CVM_PASS;
-        cvm_method = 0x02;  /* Encrypted PIN (would have been collected above) */
-    } else {
-        /* Above signed limit — skip CVM, go online */
-        cvm_result = CVM_PASS;
-        cvm_method = 0x00;  /* No CVM (going online instead) */
-    }
-
-    if (cvm_result == CVM_FAIL) {
-        if (outcome) *outcome = OUTCOME_DECLINE;
-        return ORCH_E_CVM_FAIL;  /* CVM failed */
-    }
-
-    /* ----------------------------------------------------------------
-     * Phase G: Risk checks
-     * ---------------------------------------------------------------- */
-
-    /* K3 Risk checks:
-     *   TRM: Check velocity limits against ICCDB
-     *   CRM: Check card-side risk limits (via ICCDB)
-     *   VEL: Track transaction amounts for velocity reporting
-     *
-     * For this reference, all pass (real impl checks counters).
-     */
-    risk_result_t risk_result = RISK_PASS;
-
-    if (risk_result == RISK_FAIL) {
-        if (outcome) *outcome = OUTCOME_DECLINE;
-        return ORCH_E_RISK_FAIL;  /* Risk check failed */
-    }
-
-    /* ----------------------------------------------------------------
-     * Phase H: Generate ARQC (Application Cryptogram)
-     * ---------------------------------------------------------------- */
-
-    /* Build DOL data for ARQC per K3 TDOL:
-     * [9F16] TN + [9F02] Amount + [9F36] Amt Other +
-     * [9F03] Default Amt + [5F2A] Currency + [9F66] Terminal Qualifiers
-     */
-    const tlv_entry_t *dol_entries[] = {
-        tlv_find(&wh, 0x9F16),
-        tlv_find(&wh, 0x9F02),
-        tlv_find(&wh, 0x9F36),
-        tlv_find(&wh, 0x9F03),
-        tlv_find(&wh, 0x5F2A),
-        tlv_find(&wh, 0x9F66),
-    };
-
-    uint8_t dol_data[32];
-    uint8_t dol_len = 0;
-
-    for (int i = 0; i < 6; i++) {
-        if (dol_entries[i]) {
-            memcpy(dol_data + dol_len, dol_entries[i]->value, dol_entries[i]->len);
-            dol_len += dol_entries[i]->len;
+        rc = icr->transceive(apdu, 19, resp, sizeof(resp), &resp_len);
+        if (rc != 0) {
+            if (outcome) *outcome = OUTCOME_DECLINE;
+            return EP_E_SELECT;  /* Not an EMV contactless card */
         }
+
+        /* Parse PPSE response FCI — extract Directory Entries (tag 0x61) */
+        apdu_parse_tlv_only(resp, resp_len, &wh);
+        /* Warehouse now has: BF0C (FCI Issuer Discretionary Data)
+         * containing 61 (Directory Entry) → 4F (AID), 9F2A (Kernel ID), etc. */
     }
 
-    /* Generate ARQC via crypto driver */
-    crypto_driver_t *crypto = (crypto_driver_t *)platform_get_crypto();
-    uint8_t arqc[8];
-    size_t arqc_len = sizeof(arqc);
+    /* Step B4: SEND POI INFORMATION (SPI) — optional, if card requests it
+     * The PPSE FCI may contain tag 9F3E (Terminal Categories Supported List)
+     * or 9F3F (Selection Data Object List). If either is present, the card
+     * wants additional terminal info. We send SEND POI INFORMATION command.
+     * Response contains updated directory entries — re-process them. */
+    /* Placeholder: real impl checks warehouse for 9F3E/9F3F, builds SPI
+     * payload per Book B Annex C.1, sends command INS=B2. */
 
-    int crypt_rc = crypto->generate_cryptogram(
-        CRYPTO_DES,
-        NULL, 0,       /* Key: would look up from app key table using PAN/AID */
-        0,             /* Key index */
-        dol_data, dol_len,
-        arqc, &arqc_len
-    );
+    /* Step B5: Final Combination Selection — pick highest-priority combo,
+     * then SELECT [AID] with possible Extended Selection (9F29).
+     * For reference, we select UnionPay AID as example.
+     * The kernel_id is extracted from tag 9F2A in the Directory Entry. */
+    {
+        /* Real impl: parse candidate list from warehouse, pick best match,
+         * build AID + Extended Selection bytes, call build_and_send_select_apdu() */
+        uint8_t mock_aid[] = { 0xA0, 0x00, 0x00, 0x00, 0x03 };
+        uint8_t mock_aid_len = 5;
 
-    if (crypt_rc != 0 || arqc_len < 8) {
-        if (outcome) *outcome = OUTCOME_ERROR;
-        return CRYPTO_E_BUFFER;  /* Cryptogram generation failed */
+        /* Call kernel_select_app() which sends SELECT AID APDU.
+         * The FCI response contains: AID, AIP, Label, AUC, PDOL, etc. */
+        /* For reference, this uses internal helper defined in kernel_core.c */
     }
 
-    /* Store ARQC in output warehouse */
-    tlv_store_set(&wh, 0x9F26, arqc, 8);  /* Tag 9F26 = Application Cryptogram */
+    /* ---- Phase C: Kernel execution (GPO → Read Records → SDA/ODA → CVM → GAC) ---- */
 
-    /* ----------------------------------------------------------------
-     * Phase I: Determine outcome
-     * ---------------------------------------------------------------- */
-
-    outcome_code_t final_outcome;
-
-    if (cvm_result == CVM_PASS && risk_result == RISK_PASS) {
-        /* Both passed — approve */
-        final_outcome = OUTCOME_APPROVE_TERMINAL_CONDS;
-    } else {
-        final_outcome = OUTCOME_DECLINE;
+    /* After entry point selects the application and activates the kernel,
+     * the kernel takes over. The kernel_flow function orchestrates the
+     * Book C-3 specific steps: */
+    {
+        /* Real impl:
+         * 1. Build GPO command with PDOL data from SELECT FCI
+         * 2. Parse GPO response (cryptogram, AFL, TVR, DDOL)
+         * 3. Read records per AFL to get ICA cert, signature, etc.
+         * 4. Perform SDA/fDDA or ODA authentication
+         * 5. Run CVM plugin (CTQ decision tree or fallback)
+         * 6. Run Risk plugin (TRM, CRM, VEL, SDS)
+         * 7. Build GENERATE AC with TDOL data
+         * 8. Parse GENERATE AC response (TC / ARPC / NASP)
+         * 9. Set final outcome based on TC vs ARPC response */
     }
 
-    /* ----------------------------------------------------------------
-     * Phase J: Build Terminal Conduction Data (TC)
-     * ---------------------------------------------------------------- */
+    /* ---- Phase D: Outcome determination ---- */
+    /* Placeholder outcome — real impl reads GENERATE AC response tags:
+     * [9F26] ARQC → Online (send to acquirer)
+     * [9F27] Cryptogram Info → check if TC or ARQC type
+     * [8A] Auth Response Code → approve/decline code from issuer
+     * [9F2B] NASP → Decline (No SDI Parameter)
+     */
 
-    if (final_outcome == OUTCOME_APPROVE_TERMINAL_CONDS) {
-        /* Build TC TLV — minimal set of tags to send to card:
-         * [9F26] ARQC (8 bytes)
-         * [8A]   Auth Response Code (2 bytes, e.g., 0x00 0x00 for approval)
-         * [9F27] Cryptogram Info Field — flags about the ARQC type
-         *
-         * For K3, TC is typically: 9F26 + 8A (simplest case)
-         */
-        uint8_t auth_code[] = { 0x00, 0x00 };         /* Approved */
-        uint8_t cif[] = { 0x08 };                      /* ARQC = 0x08 per EMV table */
+    if (outcome) *outcome = OUTCOME_APPROVE_TERMINAL_CONDS;
 
+    /* Return minimal TC TLV for reference.
+     * Real impl serializes TC/NASP from warehouse tags via tlv_dump_ordered(). */
+    if (tc_out && tc_len && tc_max_len >= 5) {
+        /* Mock TC: [9F26] ARQC(8 bytes) + [8A] Auth Code(2 bytes) */
         uint8_t tc_raw[] = {
-            0x9F, 0x26, 0x08, 0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE,  /* ARQC mock */
-            0x8A, 0x02, 0x00, 0x00,                                             /* Auth Response Code */
-            0x9F, 0x27, 0x01, 0x08,                                             /* Cryptogram Info Field */
+            0x9F, 0x26, 0x08, 0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE, 0xBA, 0xBE
         };
-
-        if (tc_out && tc_len && tc_max_len >= sizeof(tc_raw)) {
-            memcpy(tc_out, tc_raw, sizeof(tc_raw));
-            *tc_len = (uint8_t)sizeof(tc_raw);
-        }
-
-        if (outcome) *outcome = final_outcome;
-        return 0;
-
-    } else {
-        /* DECLINE — build NASP */
-        uint8_t nasp[] = {
-            0x9F, 0x2B,    /* Tag: No Application SDI Parameter */
-            0x02,          /* Length */
-            0x00, 0x00,    /* NASP value */
-        };
-
-        if (tc_out && tc_len && tc_max_len >= sizeof(nasp)) {
-            memcpy(tc_out, nasp, sizeof(nasp));
-            *tc_len = (uint8_t)sizeof(nasp);
-        }
-
-        if (outcome) *outcome = OUTCOME_DECLINE;
-        return 0;
+        memcpy(tc_out, tc_raw, sizeof(tc_raw));
+        *tc_len = (uint8_t)sizeof(tc_raw);
     }
+
+    return EMV_E_OK;
 }

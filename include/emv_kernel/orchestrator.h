@@ -1,9 +1,6 @@
 /**
  * @file emv_kernel/orchestrator.h
- * @brief Kernel execution orchestrator — generic flow skeleton.
- *
- * Ties together the entry point result, kernel dictionary, plugins,
- * and crypto to produce a transaction outcome.
+ * @brief Kernel execution orchestrator + Entry Point integration.
  */
 
 #ifndef EMV_KERNEL_ORCHESTRATOR_H
@@ -12,8 +9,22 @@
 #include "emv_kernel/types.h"
 #include "emv_kernel/warehouse.h"
 #include "emv_kernel/kernel_interface.h"
+#include "emv_kernel/errors.h"
+
+/* ===================== Entry Point / Kernel Flow Interface ============== */
+
+/* Forward declaration — defined in entry_point.h */
+struct ep_context_s;
+
+/**
+ * Execute the full kernel transaction after Entry Point selection.
+ * Sequence: GPO → Read Records (AFL) → SDA/ODA → CVM → GENERATE AC → Outcome
+ */
+int kernel_execute(uint8_t kernel_id, struct ep_context_s *ep_ctx);
 
 /* ---- Outcome details per Book A §6.2 ---- */
+
+/** Outcome details per Book A §6.2 */
 typedef struct {
     outcome_code_t code;          /* APPROVE_ISSUER / APPROVE_TERMINAL / DECLINE / RESTART / ERROR */
 

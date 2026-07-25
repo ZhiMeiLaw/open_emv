@@ -18,6 +18,7 @@ LOCAL_SRC_FILES := \
     src/core/dict_validate.c \
     src/core/entry_point.c \
     src/core/orchestrator.c \
+    src/core/kernel_core.c \
     src/utils/tlv_encode.c \
     src/utils/bitmap.c \
     src/utils/apdu_tlv_parser.c \
