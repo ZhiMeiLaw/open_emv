@@ -3,6 +3,9 @@
 
 LOCAL_PATH := $(call my-dir)
 
+# Base path — Android.mk lives in jni/, source tree is one level up
+ROOT_PATH := $(LOCAL_PATH)/..
+
 # ====================================================================
 # Core shared library (default output: libemv_kernel.so)
 # ====================================================================
@@ -10,87 +13,96 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE    := emv_kernel
 
-# All source files — public core + utils + dictionaries + plugins
 LOCAL_SRC_FILES := \
-    src/core/warehouse.c \
-    src/core/kernel_registry.c \
-    src/core/platform.c \
-    src/core/dict_validate.c \
-    src/core/entry_point.c \
-    src/core/orchestrator.c \
-    src/core/kernel_core.c \
-    src/utils/tlv_encode.c \
-    src/utils/bitmap.c \
-    src/utils/apdu_tlv_parser.c \
-    src/dict/kernel3_dict.c \
-    src/dict/kernel5_dict.c \
-    src/dict/kernel7_dict.c \
-    src/plugin/crypto_driver_ref.c \
-    src/plugin/cvm_plugin_kernel3.c \
-    src/plugin/cvm_plugin_kernel5.c \
-    src/plugin/cvm_plugin_kernel7.c \
-    src/plugin/risk_plugin_kernel3.c \
-    src/plugin/risk_plugin_kernel5.c
+    $(ROOT_PATH)/src/core/warehouse.c \
+    $(ROOT_PATH)/src/core/kernel_registry.c \
+    $(ROOT_PATH)/src/core/platform.c \
+    $(ROOT_PATH)/src/core/dict_validate.c \
+    $(ROOT_PATH)/src/core/entry_point.c \
+    $(ROOT_PATH)/src/core/orchestrator.c \
+    $(ROOT_PATH)/src/core/kernel_core.c \
+    $(ROOT_PATH)/src/utils/tlv_encode.c \
+    $(ROOT_PATH)/src/utils/bitmap.c \
+    $(ROOT_PATH)/src/utils/apdu_tlv_parser.c \
+    $(ROOT_PATH)/src/dict/kernel3_dict.c \
+    $(ROOT_PATH)/src/dict/kernel5_dict.c \
+    $(ROOT_PATH)/src/dict/kernel7_dict.c \
+    $(ROOT_PATH)/src/plugin/crypto_driver_ref.c \
+    $(ROOT_PATH)/src/plugin/cvm_plugin_kernel3.c \
+    $(ROOT_PATH)/src/plugin/cvm_plugin_kernel5.c \
+    $(ROOT_PATH)/src/plugin/cvm_plugin_kernel7.c \
+    $(ROOT_PATH)/src/plugin/risk_plugin_kernel3.c \
+    $(ROOT_PATH)/src/plugin/risk_plugin_kernel5.c
 
-# Public include directory
-LOCAL_C_INCLUDES += $(LOCAL_PATH)/include
+LOCAL_C_INCLUDES += $(ROOT_PATH)/include
 
-# Compiler flags — strict C99, no warnings
 LOCAL_CFLAGS += -std=c99 -pedantic -Wall -Wextra -Werror=return-type
-
-# Shared library properties
 LOCAL_LDLIBS :=
 
 include $(BUILD_SHARED_LIBRARY)
 
 # ====================================================================
-# Static library (for static linking into other shared libs or host)
+# Static library (for test executables and linking into other shared libs)
 # ====================================================================
 include $(CLEAR_VARS)
 
 LOCAL_MODULE    := emv_kernel_static
-LOCAL_SRC_FILES := $(LOCAL_SRC_FILES)
-LOCAL_C_INCLUDES += $(LOCAL_PATH)/include
-LOCAL_CFLAGS   += -std=c99 -pedantic -Wall -Wextra -Werror=return-type
-LOCAL_CFLAGS   += -fPIC
+LOCAL_SRC_FILES := \
+    $(ROOT_PATH)/src/core/warehouse.c \
+    $(ROOT_PATH)/src/core/kernel_registry.c \
+    $(ROOT_PATH)/src/core/platform.c \
+    $(ROOT_PATH)/src/core/dict_validate.c \
+    $(ROOT_PATH)/src/core/entry_point.c \
+    $(ROOT_PATH)/src/core/orchestrator.c \
+    $(ROOT_PATH)/src/core/kernel_core.c \
+    $(ROOT_PATH)/src/utils/tlv_encode.c \
+    $(ROOT_PATH)/src/utils/bitmap.c \
+    $(ROOT_PATH)/src/utils/apdu_tlv_parser.c \
+    $(ROOT_PATH)/src/dict/kernel3_dict.c \
+    $(ROOT_PATH)/src/dict/kernel5_dict.c \
+    $(ROOT_PATH)/src/dict/kernel7_dict.c \
+    $(ROOT_PATH)/src/plugin/crypto_driver_ref.c \
+    $(ROOT_PATH)/src/plugin/cvm_plugin_kernel3.c \
+    $(ROOT_PATH)/src/plugin/cvm_plugin_kernel5.c \
+    $(ROOT_PATH)/src/plugin/cvm_plugin_kernel7.c \
+    $(ROOT_PATH)/src/plugin/risk_plugin_kernel3.c \
+    $(ROOT_PATH)/src/plugin/risk_plugin_kernel5.c
+
+LOCAL_C_INCLUDES += $(ROOT_PATH)/include
+LOCAL_CFLAGS   += -std=c99 -pedantic -Wall -Wextra -Werror=return-type -fPIC
 
 include $(BUILD_STATIC_LIBRARY)
 
 # ====================================================================
-# Host test executables (cross-compilation, run on target device)
+# Host test executables (cross-compiled, run on target device)
 # ====================================================================
 include $(CLEAR_VARS)
 
 LOCAL_MODULE    := test_warehouse
-LOCAL_SRC_FILES := tests/unit/test_warehouse.c
-LOCAL_C_INCLUDES += $(LOCAL_PATH)/include
-LOCAL_CFLAGS    += -std=c99 -pedantic -Wall
+LOCAL_SRC_FILES := $(ROOT_PATH)/tests/unit/test_warehouse.c
+LOCAL_C_INCLUDES += $(ROOT_PATH)/include
+LOCAL_CFLAGS    += -std=c99 -pedantic -Wall -Wno-unused-parameter -Wno-unused-variable
 LOCAL_STATIC_LIBRARIES := emv_kernel_static
-
-# Remove pedantic errors just for test targets (allow unused params etc.)
-LOCAL_CFLAGS += -Wno-unused-parameter -Wno-unused-variable
 
 include $(BUILD_EXECUTABLE)
 
 include $(CLEAR_VARS)
 
 LOCAL_MODULE    := test_tlv_encode
-LOCAL_SRC_FILES := tests/unit/test_tlv_encode.c
-LOCAL_C_INCLUDES += $(LOCAL_PATH)/include
-LOCAL_CFLAGS    += -std=c99 -pedantic -Wall
+LOCAL_SRC_FILES := $(ROOT_PATH)/tests/unit/test_tlv_encode.c
+LOCAL_C_INCLUDES += $(ROOT_PATH)/include
+LOCAL_CFLAGS    += -std=c99 -pedantic -Wall -Wno-unused-parameter -Wno-unused-variable
 LOCAL_STATIC_LIBRARIES := emv_kernel_static
-LOCAL_CFLAGS   += -Wno-unused-parameter -Wno-unused-variable
 
 include $(BUILD_EXECUTABLE)
 
 include $(CLEAR_VARS)
 
 LOCAL_MODULE    := test_bitmap
-LOCAL_SRC_FILES := tests/unit/test_bitmap.c
-LOCAL_C_INCLUDES += $(LOCAL_PATH)/include
-LOCAL_CFLAGS    += -std=c99 -pedantic -Wall
+LOCAL_SRC_FILES := $(ROOT_PATH)/tests/unit/test_bitmap.c
+LOCAL_C_INCLUDES += $(ROOT_PATH)/include
+LOCAL_CFLAGS    += -std=c99 -pedantic -Wall -Wno-unused-parameter -Wno-unused-variable
 LOCAL_STATIC_LIBRARIES := emv_kernel_static
-LOCAL_CFLAGS   += -Wno-unused-parameter -Wno-unused-variable
 
 include $(BUILD_EXECUTABLE)
 
@@ -101,11 +113,11 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE    := ref_k3_transaction
 LOCAL_SRC_FILES := \
-    examples/ref_k3/k3_ref_transaction.c \
-    examples/ref_k3/k3_ref_crypto.c \
-    examples/ref_k3/k3_ref_platform.c \
-    examples/ref_k3/k3_ref_icr_mock.c
-LOCAL_C_INCLUDES += $(LOCAL_PATH)/include
+    $(ROOT_PATH)/examples/ref_k3/k3_ref_transaction.c \
+    $(ROOT_PATH)/examples/ref_k3/k3_ref_crypto.c \
+    $(ROOT_PATH)/examples/ref_k3/k3_ref_platform.c \
+    $(ROOT_PATH)/examples/ref_k3/k3_ref_icr_mock.c
+LOCAL_C_INCLUDES += $(ROOT_PATH)/include
 LOCAL_CFLAGS    += -std=c99 -pedantic -Wall -Wno-unused-parameter -Wno-unused-variable
 LOCAL_STATIC_LIBRARIES := emv_kernel_static
 

@@ -1,27 +1,42 @@
 /**
  * @file src/plugin/cvm_plugin_kernel3.c
  * @brief Kernel 3 reference CVM plugin per Book C-3 Section 5.7.
- */
  *
  *   Step 1: Check Terminal Qualifiers (Tag 9F6C) from GPO response.
  *           CTQ is parsed as a bitmap of CVM requirements.
  *
- *   Step 2: Apply priority-ordered checks (Book C-3 §5.7.1.2):
- *           1) Online PIN Required?  → invoke online PIN flow
- *           2) CDCVM Performed?       → validate confirmation code
- *           3) Signature Required?    → request signature
- *           4) None matched           → No-CVM (or Decline if CVM mandatory)
+ *   Step 2: Apply priority-ordered checks (Book C-3 5.7.1.2):
+ *           1) Online PIN Required?   invoke online PIN flow
+ *           2) CDCVM Performed?        validate confirmation code
+ *           3) Signature Required?     request signature
+ *           4) None matched            No-CVM (or Decline if CVM mandatory)
  *
- *   Step 3: If CTQ not returned from card (Book C-3 §5.7.1.1):
- *           1) Reader supports Signature?        → request signature
- *           2) Reader supports only Online PIN?  → online PIN required
- *           3) No CVM support at all?            → Decline Required flag
+ *   Step 3: If CTQ not returned from card (Book C-3 5.7.1.1):
+ *           1) Reader supports Signature?         request signature
+ *           2) Reader supports only Online PIN?   online PIN required
+ *           3) No CVM support at all?             Decline Required flag
  *
  *   Step 4: Populate CVM Results Tag [9F34] per outcome.
  *           Byte 1: CVM method code (per Table A-4-1)
  *           Byte 2: Always 0x00
  *           Byte 3: Result status (0x00=unknown, 0x02=success)
  */
+
+#include "emv_kernel/types.h"
+#include "emv_kernel/warehouse.h"
+#include "emv_kernel/kernel_interface.h"
+#include "emv_kernel/platform.h"
+#include "emv_kernel/bitmap.h"
+#include "emv_kernel/orchestrator.h"
+#include "emv_kernel/ui_driver.h"
+#include <string.h>
+
+/* Forward declaration */
+typedef struct {
+    uint32_t unsigned_limit;      /* Amount <= this --> No-CVM        */
+    uint32_t signed_limit;        /* Amount > unsigned, <= this --> PIN */
+    uint8_t  pin_key_index;       /* Key index for PIN encryption     */
+} pos_params_k3_t;
 
 /* ================================================================== */
 /*  Helper: extract value from warehouse                               */
@@ -113,27 +128,10 @@ static cvm_result_t kernel3_cvm_evaluate(const void *ctx_ptr)
 
         /* Priority 1: Online PIN Required (CTQ byte1 bit 8 = 1) */
         if (ctq.online_pin_required) {
-            extern ui_driver_t *g_ui_driver;
-            if (g_ui_driver && g_ui_driver->prompt_pin) {
-                const tlv_entry_t *pan_entry = tlv_find(&oc->input_wh, 0x5A);
-                if (pan_entry) {
-                    uint8_t pin_block[16];
-                    uint16_t pin_len = sizeof(pin_block);
-                    int rc = g_ui_driver->prompt_pin(
-                        pan_entry->value, (uint16_t)pan_entry->len,
-                        pin_block, &pin_len, pp->pin_key_index
-                    );
-                    if (rc == 0) {
-                        build_cvm_results(&oc->output_wh, 0x02, 0x02);
-                        /* Encrypted PIN stored for card verification */
-                        tlv_store_set(&oc->output_wh, 0x9F3A, pin_block, pin_len);
-                        return CVM_PASS;
-                    } else if (rc < 0) {
-                        build_cvm_results(&oc->output_wh, 0x02, 0x00);
-                        return CVM_FAIL;
-                    }
-                }
-            }
+            /* UI driver is platform-specific and not linked in reference impl.
+             * In production: g_ui_driver = &my_platform_ui; */
+            build_cvm_results(&oc->output_wh, 0x02, 0x00);
+            return CVM_FAIL;  /* PIN required but no UI available */
             /* No PIN prompt available — decline */
             return CVM_FAIL;
         }

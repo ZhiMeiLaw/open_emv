@@ -45,6 +45,8 @@ typedef struct {
     uint8_t  pin_key_index;       /* Key index for PIN encryption    */
 } pos_params_k3_t;
 
+extern void pos_params_init_defaults(void);
+
 /* ================================================================== */
 /*  STEP 1: Application startup                                       */
 /* ================================================================== */

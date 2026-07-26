@@ -286,7 +286,7 @@ typedef struct {
 /* ------------------------------------------------------------------ */
 typedef struct {
     uint8_t  kernel_id;
-    dict_item_t items[MAX_DICT_ITEMS];
+    const dict_item_t *items;          /* Pointer to tag dictionary   */
     uint8_t  item_count;
     const struct cvm_plugin_s *cvm_plugin;
     const struct risk_plugin_s *risk_plugin;

@@ -195,7 +195,7 @@ int aid_nad_pad_to_bytes(const char *hex_str, uint8_t *out, uint8_t *out_len, ui
 
     size_t hex_len = strlen(hex_str);
     if (hex_len % 2 != 0) return TLVE_E_BAD_FORMAT;
-    if (hex_len / 2 > max_len) return TLVE_E_BUFFER;
+    if (hex_len / 2 > max_len) return TLVE_E_INVAL;
 
     uint8_t bytes_needed = (uint8_t)(hex_len / 2);
     *out_len = bytes_needed;

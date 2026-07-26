@@ -22,6 +22,8 @@
 #include "emv_kernel/apdu_tlv_parser.h"
 #include "emv_kernel/errors.h"
 #include "emv_kernel/entry_point.h"
+#include "emv_kernel/kernel_registry.h"
+#include "emv_kernel/platform.h"
 #include <string.h>
 
 /* ================================================================== */
@@ -112,38 +114,42 @@ static int kernel_gpo(kernel_txn_ctx_t *txn)
      * Example PDOL from card: [9F66 04 9F02 06 5F2A 02 9F36 02]
      * Meaning: send Terminal Qualifiers(4B) + Amount(6B) + Currency(2B) + ...
      */
+    /* Parse PDOL template and build GPO command data */
+    uint8_t gpo_data[128];
+    uint16_t gpo_data_len;
+
     const tlv_entry_t *pdol_entry = tlv_find(txn->ep_ctx->wh, 0xDF84);
     if (!pdol_entry) {
         /* No PDOL — send empty data with just template tag 0x83 */
-        uint8_t gpo_data[] = { 0x83, 0x00 };  /* Template [83], length 0 */
-        uint16_t gpo_data_len = sizeof(gpo_data);
-        goto send_gpo;
+        gpo_data[0] = 0x83;
+        gpo_data[1] = 0x00;
+        gpo_data_len = 2;
+    } else {
+        /* Wrap PDOL data in TLV template [83] */
+        uint8_t tmpl[128];
+        uint8_t tmpl_len = 0;
+        if (build_dol_data_from_pdol(txn->ep_ctx->wh, pdol_entry->value,
+                                      pdol_entry->len, tmpl, sizeof(tmpl), &tmpl_len) == EMV_E_OK) {
+            gpo_data[gpo_data_len++] = 0x83;     /* Template tag */
+            gpo_data[gpo_data_len++] = (uint8_t)tmpl_len;
+            memcpy(gpo_data + gpo_data_len, tmpl, tmpl_len);
+            gpo_data_len += tmpl_len;
+        }
     }
-
-    /* Parse PDOL template and build GPO command data */
-    uint8_t gpo_data[128];
-    uint16_t gpo_data_len = 0;
-
-    /* Wrap PDOL data in TLV template [83] */
-    uint8_t tmpl[128];
-    uint8_t tmpl_len = 0;
-    if (build_dol_data_from_pdol(txn->ep_ctx->wh, pdol_entry->value,
-                                  pdol_entry->len, tmpl, sizeof(tmpl), &tmpl_len) == EMV_E_OK) {
-        gpo_data[gpo_data_len++] = 0x83;     /* Template tag */
-        gpo_data[gpo_data_len++] = (uint8_t)tmpl_len;
-        memcpy(gpo_data + gpo_data_len, tmpl, tmpl_len);
-        gpo_data_len += tmpl_len;
-    }
-
-send_gpo:
     uint8_t resp[256];
     uint16_t resp_len = sizeof(resp);
 
-    int rc = txn->ep_ctx->icr->transceive(
-        (const uint8_t[]){ 0x00, 0xA8, 0x00, 0x00, (uint8_t)gpo_data_len },
-        5, gpo_data, gpo_data_len,
-        resp, sizeof(resp), &resp_len
-    );
+    /* Send GPO: CLA=00 INS=A8 P1=00 P2=00 + [83]PDOL data */
+    uint8_t apdu_cmd[132];
+    apdu_cmd[0] = 0x00;   /* CLA */
+    apdu_cmd[1] = 0xA8;   /* INS GET PROCESSING OPTIONS */
+    apdu_cmd[2] = 0x00;   /* P1 */
+    apdu_cmd[3] = 0x00;   /* P2 */
+    apdu_cmd[4] = (uint8_t)gpo_data_len;  /* LC */
+    memcpy(apdu_cmd + 5, gpo_data, gpo_data_len);
+    uint16_t cmd_len = (uint16_t)(5 + gpo_data_len);
+
+    int rc = txn->ep_ctx->icr->transceive(apdu_cmd, cmd_len, resp, sizeof(resp), &resp_len);
     if (rc != 0) {
         uint8_t sw1 = (rc >> 8) & 0xFF;
         uint8_t sw2 = rc & 0xFF;
@@ -475,15 +481,19 @@ static int kernel_generate_ac(kernel_txn_ctx_t *txn)
         }
     }
 
-    /* Send GENERATE AC: CLA=00 INS=A6 */
+    /* Send GENERATE AC: CLA=00 INS=A6 [TDOL data] */
+    uint8_t apdu_cmd[132];
+    apdu_cmd[0] = 0x00;  /* CLA */
+    apdu_cmd[1] = 0xA6;  /* INS GENERATE AC */
+    apdu_cmd[2] = 0x00;  /* P1 */
+    apdu_cmd[3] = 0x00;  /* P2 */
+    apdu_cmd[4] = (uint8_t)genac_data_len;  /* LC */
+    memcpy(apdu_cmd + 5, genac_data, genac_data_len);
+    uint16_t cmd_len = (uint16_t)(5 + genac_data_len);
+
     uint8_t resp[256];
     uint16_t resp_len = sizeof(resp);
-
-    int rc = txn->ep_ctx->icr->transceive(
-        (const uint8_t[]){ 0x00, 0xA6, 0x00, 0x00, (uint8_t)genac_data_len },
-        5, genac_data, genac_data_len,
-        resp, sizeof(resp), &resp_len
-    );
+    int rc = txn->ep_ctx->icr->transceive(apdu_cmd, cmd_len, resp, sizeof(resp), &resp_len);
 
     if (rc != 0) return EP_E_GPO;  /* Card refused */
 
@@ -576,7 +586,7 @@ int kernel_execute(uint8_t kernel_id, ep_context_t *ep_ctx)
     rc = kernel_generate_ac(&txn);
 
     /* Step 8: Determine outcome */
-    ep_ctx->outcome.code = kernel_determine_outcome(&txn);
+    ep_ctx->outcome = kernel_determine_outcome(&txn);
 
     return EMV_E_OK;
 }

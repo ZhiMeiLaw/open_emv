@@ -14,6 +14,10 @@
 #include "emv_kernel/types.h"
 #include "emv_kernel/warehouse.h"
 
+/* Forward declarations */
+struct crypto_driver_s;
+struct outcome_result_s;  /* defined in orchestrator.h */
+
 /* Forward declarations to avoid circular deps */
 struct crypto_driver_s;
 
@@ -21,11 +25,7 @@ struct crypto_driver_s;
 /*  CVM Plugin Interface                                              */
 /* ================================================================== */
 
-typedef enum {
-    CVM_PASS,             /* CVM check passed                         */
-    CVM_FAIL,             /* CVM check failed → decline               */
-    CVM_NOT_SUPPORTED,    /* This kernel does not support this CVM     */
-} cvm_result_t;
+/* cvm_result_t, cvm_plugin_t — enum already defined in types.h */
 
 typedef struct cvm_plugin_s {
     /**
@@ -51,11 +51,7 @@ typedef struct cvm_plugin_s {
 /*  Risk Plugin Interface                                             */
 /* ================================================================== */
 
-typedef enum {
-    RISK_PASS,       /* Risk check passed                      */
-    RISK_FAIL,       /* Risk check failed → decline            */
-    RISK_FALLBACK,   /* Risk issue resolved by fallback e.g. CVM*/
-} risk_result_t;
+/* risk_result_t, risk_check_type_t already defined in types.h */
 
 typedef struct risk_plugin_s {
     /**
@@ -196,7 +192,7 @@ typedef struct {
     const term_acq_interface_t *acq_iface;
 
     /* Outcome result being assembled */
-    outcome_result_t *outcome;
+    struct outcome_result_s *outcome;
 } kernel_context_t;
 
 #endif /* EMV_KERNEL_KERNEL_INTERFACE_H */

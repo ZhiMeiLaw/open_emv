@@ -164,7 +164,7 @@ int entry_point_parse_ppse_response(ep_context_t *ctx,
 
     /* Parse the raw TLV from PPSE SELECT response into warehouse */
     int parsed = tlv_parse_raw(resp, resp_len, ctx->wh);
-    if (parsed <= 0) return EP_E_GPO_FAILED;  /* Reuse existing code */
+    if (parsed <= 0) return EP_E_GPO;  /* Failed to parse PPSE response */
 
     /* Extract Directory Entries (BF0C -> 61) from FCI Issuer Discretionary Data */
     /* In real implementation, walk through BF0C tag and find 0x61 entries */
@@ -209,7 +209,7 @@ int entry_point_step_spi(ep_context_t *ctx)
 
     int rc = build_and_send_spi_apdu(ctx, spi_data, spi_data_len,
                                       resp, sizeof(resp), &resp_len);
-    if (rc != 0) return EP_E_PROFILE_FAILED;
+    if (rc != 0) return EP_E_PROFILE;
 
     /* Parse SPI response FCI */
     return entry_point_parse_ppse_response(ctx, resp, resp_len);
@@ -250,7 +250,7 @@ int entry_point_step_select_app(ep_context_t *ctx,
     uint16_t resp_len = sizeof(resp);
 
     int rc = build_and_send_select_apdu(ctx, 0x04, p2, sel_data, sel_data_len,
-                                         resp, sizeof(resp), &recv_len);
+                                         resp, sizeof(resp), &resp_len);
     if (rc != 0) return EP_E_SELECT;  /* SW not 9000 or communication error */
 
     /* Store SELECT response FCI in warehouse */
@@ -316,7 +316,7 @@ int entry_point_run(ep_context_t *ctx, const void *pos_params)
 
         /* Parse PPSE response */
         rc = entry_point_parse_ppse_response(ctx, select_resp, select_resp_len);
-        if (rc != 0) return EP_E_PROFILE_FAILED;
+        if (rc != 0) return EP_E_PROFILE;
     }
 
     /* Step 4a: SPI (SEND POI INFORMATION) if card requested */

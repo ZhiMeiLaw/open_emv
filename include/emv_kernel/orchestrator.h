@@ -10,17 +10,16 @@
 #include "emv_kernel/warehouse.h"
 #include "emv_kernel/kernel_interface.h"
 #include "emv_kernel/errors.h"
+#include "emv_kernel/entry_point.h"
 
-/* ===================== Entry Point / Kernel Flow Interface ============== */
-
-/* Forward declaration — defined in entry_point.h */
-struct ep_context_s;
+/* Forward declaration — defined as struct ep_context_t in entry_point.h */
+struct ep_context_t;
 
 /**
  * Execute the full kernel transaction after Entry Point selection.
  * Sequence: GPO → Read Records (AFL) → SDA/ODA → CVM → GENERATE AC → Outcome
  */
-int kernel_execute(uint8_t kernel_id, struct ep_context_s *ep_ctx);
+int kernel_execute(uint8_t kernel_id, ep_context_t *ep_ctx);
 
 /* ---- Outcome details per Book A §6.2 ---- */
 

@@ -122,7 +122,7 @@ typedef struct {
     uint8_t byte1_reissue_document;          /* B5 */
     uint8_t byte1_request_pin;               /* B6 */
     uint8_t byte1_language_preference;       /* B7 */
-    uint8_t byte1_ Merchant_priority;         /* B8 */
+    uint8_t byte1_merchant_priority;         /* B8 */
     uint8_t byte2_default_term;              /* B9 */
     uint8_t byte2_contactless_warm_reset;    /* B10 */
     uint8_t byte2_cvv_enabled;               /* B11 */

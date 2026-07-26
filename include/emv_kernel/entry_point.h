@@ -61,6 +61,9 @@ typedef struct {
     /* Internal */
     uint8_t sfi;                  /* Selected File Index for read records */
     uint8_t sdfi_count;           /* Start DF Identifier (number of records) */
+
+    /* Output: final transaction outcome code */
+    outcome_code_t outcome;
 } ep_context_t;
 
 /* ================================================================== */

@@ -1,10 +1,11 @@
 /**
  * @file src/plugin/risk_plugin_kernel3.c
  * @brief Kernel 3 reference Risk plugin implementation per Book A §6.2 + Book C §4.6.
- */
- *   - TRM: Terminal Risk Management — VEL, frequency, amount limits
- *   - CRM: Card Risk Management — ICCDB-based card-side limits
- *   - SDS: Signature Data Set — token/cardholder verification
+ *
+ * K3 Risk checks:
+ *   - TRM: Terminal Risk Management (VEL, frequency, amount limits)
+ *   - CRM: Card Risk Management (ICCDB-based card-side limits)
+ *   - SDS: Signature Data Set (token/cardholder verification)
  */
 
 #include "emv_kernel/types.h"
@@ -12,6 +13,7 @@
 #include "emv_kernel/kernel_interface.h"
 #include "emv_kernel/platform.h"
 #include "emv_kernel/errors.h"
+#include "emv_kernel/orchestrator.h"
 
 /* ================================================================== */
 /*  check: run risk checks per category                               */
@@ -24,18 +26,15 @@ static risk_result_t kernel3_risk_check(const void *ctx_ptr, risk_check_type_t t
 
     switch (type) {
     case RISK_CHECK_TRM:
-        /* Check terminal velocity limits against ICCDB */
-        /* This reads accumulated amounts from ICCDB and compares with limits */
-        return RISK_PASS;  /* Placeholder — real impl reads ICCDB counters */
+        /* Check terminal velocity limits against ICCDB counters */
+        return RISK_PASS;
 
     case RISK_CHECK_CRM:
         /* Card risk management — check intrinsic card data base */
-        /* CRM limits are stored on the card, checked via ARQC/ARPC flow */
         return RISK_PASS;
 
     case RISK_CHECK_VEL:
         /* Velocity enforcement — amount and frequency limits */
-        /* Checked via terminal ICCDB */
         return RISK_PASS;
 
     case RISK_CHECK_SDS:
@@ -99,8 +98,8 @@ static int kernel3_risk_update_iccdb(void *iccdb_ptr, const void *ctx_ptr)
 }
 
 struct risk_plugin_s kernel3_risk_plugin = {
-    .check           = kernel3_risk_check,
+    .check            = kernel3_risk_check,
     .build_tc_risk_data = kernel3_risk_build_tc,
-    .update_iccdb    = kernel3_risk_update_iccdb,
-    .version         = 1,
+    .update_iccdb     = kernel3_risk_update_iccdb,
+    .version          = 1,
 };

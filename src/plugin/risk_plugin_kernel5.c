@@ -1,8 +1,9 @@
 /**
  * @file src/plugin/risk_plugin_kernel5.c
- * @brief Kernel 5 (qVISA) reference Risk plugin — simplified per Book C-5.
- */
- *   - No CRM (card doesn't perform risk checks in qVISA flow)
+ * @brief Kernel 5 (qVISA) reference Risk plugin.
+ *
+ * K5 has simplified risk management:
+ *   - No CRM (card does not perform risk checks in qVISA flow)
  *   - No VEL (velocity enforcement is offloaded to issuer)
  *   - Only amount limit check (handled by CVM plugin)
  *   - Basic TRM — verify terminal capabilities match card expectations
@@ -13,6 +14,8 @@
 #include "emv_kernel/kernel_interface.h"
 #include "emv_kernel/bitmap.h"
 #include "emv_kernel/errors.h"
+#include "emv_kernel/tlv_encode.h"
+#include "emv_kernel/orchestrator.h"
 
 static risk_result_t kernel5_risk_check(const void *ctx_ptr, risk_check_type_t type)
 {

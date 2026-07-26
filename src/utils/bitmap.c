@@ -42,7 +42,7 @@ void terminal_qualifiers_parse(const uint8_t *tq_bytes, uint8_t tq_len, terminal
     out->byte1_reissue_document = bitmap_get(tq_bytes, 4);
     out->byte1_request_pin = bitmap_get(tq_bytes, 5);
     out->byte1_language_preference = bitmap_get(tq_bytes, 6);
-    out->byte1_Merchant_priority = bitmap_get(tq_bytes, 7);
+    out->byte1_merchant_priority = bitmap_get(tq_bytes, 7);
 
     if (tq_len > 1) {
         const uint8_t *b2 = tq_bytes + 1;

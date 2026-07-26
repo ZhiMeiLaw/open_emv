@@ -13,6 +13,7 @@
 #include "emv_kernel/warehouse.h"
 #include "emv_kernel/kernel_interface.h"
 #include "emv_kernel/platform.h"
+#include "emv_kernel/orchestrator.h"
 
 /* Forward declaration */
 typedef struct {
@@ -21,6 +22,13 @@ typedef struct {
     uint8_t  tip_signature_supported : 1;   /* Terminal supports Signature     */
     uint8_t  tip_online_pin_supported : 1;  /* Terminal supports Online PIN  */
 } pos_params_k5_t;
+
+static int build_cvm_results(tx_warehouse_t *wh, uint8_t method, uint8_t result_b3)
+{
+    uint8_t data[] = { method, 0x00, result_b3 };
+    if (!wh) return -1;
+    return tlv_store_set(wh, 0x9F34, data, sizeof(data));
+}
 
 /* ================================================================== */
 /*  Helper: extract tag from warehouse                                  */
@@ -43,7 +51,7 @@ static const uint8_t *get_9f50_byte(const tx_warehouse_t *wh, uint8_t *out_len)
 }
 
 /* ================================================================== */
-/*  evaluate: K5 CVM per Book C-5 §3.8                                 */
+/*  evaluate: K5 CVM per Book C-5 3.8                                 */
 /* ================================================================== */
 
 static cvm_result_t kernel5_cvm_evaluate(const void *ctx_ptr)
@@ -81,7 +89,7 @@ static cvm_result_t kernel5_cvm_evaluate(const void *ctx_ptr)
     case 0x10:  /* Obtain Signature */
         /* Check reader TIP: does this terminal support Signature? */
         if (!pp->tip_signature_supported) {
-            /* Tip mismatch → set Decline Required by Reader indicator */
+            /* Tip mismatch  set Decline Required by Reader indicator */
             build_cvm_results(&oc->output_wh, 0x3F, 0x00);
             return CVM_FAIL;
         }
@@ -103,7 +111,7 @@ static cvm_result_t kernel5_cvm_evaluate(const void *ctx_ptr)
         break;
 
     default:
-        /* Invalid 9F50 value — DECLINE per Book C-5 §3.8.3.2 */
+        /* Invalid 9F50 value — DECLINE per Book C-5 3.8.3.2 */
         build_cvm_results(&oc->output_wh, 0x3F, 0x00);
         return CVM_FAIL;
     }
@@ -113,7 +121,7 @@ static cvm_result_t kernel5_cvm_evaluate(const void *ctx_ptr)
     if (cvm_method == 0x1F) {  /* No CVM indicated by card */
         /* If reader REQUIRED CVM but card says No-CVM, decline. */
         /* Check TVR byte 1 bit 8 via platform hook or warehouse */
-        /* For reference: if TVR byte1 bit8==1 && cvm_no_cvm → DECLINE */
+        /* For reference: if TVR byte1 bit8==1 && cvm_no_cvm  DECLINE */
     }
 
     /* Step 4: Build CVM Results tag [9F34] */
@@ -130,13 +138,6 @@ check_limits:
     }
     build_cvm_results(&oc->output_wh, 0x1F, 0x00);
     return CVM_PASS;
-}
-
-static int build_cvm_results(tx_warehouse_t *wh, uint8_t method, uint8_t result_b3)
-{
-    uint8_t data[] = { method, 0x00, result_b3 };
-    if (!wh) return -1;
-    return tlv_store_set(wh, 0x9F34, data, sizeof(data));
 }
 
 /* ================================================================== */

@@ -17,6 +17,18 @@
 #include "emv_kernel/warehouse.h"
 #include "emv_kernel/kernel_interface.h"
 #include "emv_kernel/bitmap.h"
+#include "emv_kernel/orchestrator.h"
+#include <string.h>
+
+/* ================================================================== */
+/*  Helper: populate CVM Results tag [9F34]                           */
+/* ================================================================== */
+
+static int build_cvm_results(tx_warehouse_t *wh, uint8_t method, uint8_t result_b3)
+{
+    uint8_t data[] = { method, 0x00, result_b3 };
+    return tlv_store_set(wh, 0x9F34, data, sizeof(data));
+}
 
 /* Forward declaration — integrator provides this */
 typedef struct {
@@ -33,24 +45,18 @@ static cvm_result_t kernel7_cvm_evaluate(const void *ctx_ptr)
     /* Step 1: SDS validation (token-specific pre-check) */
     if (pp) {
         /* Compare SDS from card with terminal-stored SDS code */
-        /* Mismatch → decline or redirect to contactless/contact swap */
+        /* Mismatch  decline or redirect to contactless/contact swap */
     }
 
-    /* Step 2: Same CTQ-based decision tree as K3 §5.7 */
-    /* If CTQ present → priority: Online PIN > CDCVM > Signature */
-    /* If CTQ absent → fallback based on reader capabilities */
+    /* Step 2: Same CTQ-based decision tree as K3 5.7 */
+    /* If CTQ present  priority: Online PIN > CDCVM > Signature */
+    /* If CTQ absent  fallback based on reader capabilities */
 
     /* Skeleton: default to No-CVM, integrator implements full tree */
     if (!oc || !oc->output_wh.count) return CVM_PASS;
 
     build_cvm_results(&oc->output_wh, 0x1F, 0x00);
     return CVM_PASS;
-}
-
-static int build_cvm_results(tx_warehouse_t *wh, uint8_t method, uint8_t result_b3)
-{
-    uint8_t data[] = { method, 0x00, result_b3 };
-    return tlv_store_set(wh, 0x9F34, data, sizeof(data));
 }
 
 static uint8_t kernel7_cvm_get_method(const void *ctx_ptr)

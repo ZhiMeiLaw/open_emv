@@ -26,6 +26,7 @@
 #define WH_E_OK                EMV_E_OK        /**< Success                            */
 #define WH_E_OOM               EMV_E_NOMEM     /**< Pool out of space                  */
 #define WH_E_INVAL             EMV_E_INVAL     /**< Null ptr, zero len, invalid tag    */
+#define WH_E_NOTFOUND          -5               /**< Tag not found in warehouse         */
 
 /* ================================================================== */
 /*  TLV Encode / Decode errors (src/utils/tlv_encode.c)              */
