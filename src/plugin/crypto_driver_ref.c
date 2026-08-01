@@ -16,6 +16,86 @@
 #include <string.h>
 
 /* ================================================================== */
+/*  SECTION 0.5: SHA-1 (FIPS 180-4) — used by fDDA/SDA               */
+/* ================================================================== */
+
+typedef struct { uint32_t h[5]; uint8_t buf[64]; uint64_t bitlen; } sha1_ctx_t;
+
+static const uint32_t K1[80] = {
+    0x5a827999, 0x6ed9eba1, 0x8f1bbcdc, 0xca62c1d6,
+    0x5a827999, 0x6ed9eba1, 0x8f1bbcdc, 0xca62c1d6,
+    0x5a827999, 0x6ed9eba1, 0x8f1bbcdc, 0xca62c1d6,
+    0x5a827999, 0x6ed9eba1, 0x8f1bbcdc, 0xca62c1d6,
+    0x5a827999, 0x6ed9eba1, 0x8f1bbcdc, 0xca62c1d6,
+    0x5a827999, 0x6ed9eba1, 0x8f1bbcdc, 0xca62c1d6,
+    0x5a827999, 0x6ed9eba1, 0x8f1bbcdc, 0xca62c1d6,
+    0x5a827999, 0x6ed9eba1, 0x8f1bbcdc, 0xca62c1d6,
+};
+
+static inline uint32_t rol32(uint32_t x, int n) { return (x << n) | (x >> (32 - n)); }
+
+void sha1_init(sha1_ctx_t *ctx) {
+    ctx->h[0] = 0x67452301; ctx->h[1] = 0xefcdab89;
+    ctx->h[2] = 0x98badcfe; ctx->h[3] = 0x10325476;
+    ctx->h[4] = 0xc3d2e1f0;
+    ctx->bitlen = 0;
+}
+
+static void sha1_compress(sha1_ctx_t *ctx, const uint8_t block[64]) {
+    uint32_t W[80];
+    for (int i = 0; i < 16; i++)
+        W[i] = ((uint32_t)block[i*4] << 24) | ((uint32_t)block[i*4+1] << 16) |
+               ((uint32_t)block[i*4+2] << 8) | (uint32_t)block[i*4+3];
+    for (int i = 16; i < 80; i++)
+        W[i] = rol32(W[i-3] ^ W[i-8] ^ W[i-14] ^ W[i-16], 1);
+
+    uint32_t a = ctx->h[0], b = ctx->h[1], c = ctx->h[2], d = ctx->h[3], e = ctx->h[4];
+
+    for (int i = 0; i < 20; i++) {
+        uint32_t t = rol32(a, 5) + ((b & c) | (~b & d)) + e + W[i] + K1[i];
+        e = d; d = c; c = rol32(b, 30); b = a; a = t;
+    }
+    for (int i = 20; i < 40; i++) {
+        uint32_t t = rol32(a, 5) + (b ^ c ^ d) + e + W[i] + K1[i];
+        e = d; d = c; c = rol32(b, 30); b = a; a = t;
+    }
+    for (int i = 40; i < 60; i++) {
+        uint32_t t = rol32(a, 5) + ((b & c) | (b & d) | (c & d)) + e + W[i] + K1[i];
+        e = d; d = c; c = rol32(b, 30); b = a; a = t;
+    }
+    for (int i = 60; i < 80; i++) {
+        uint32_t t = rol32(a, 5) + (b ^ c ^ d) + e + W[i] + K1[i];
+        e = d; d = c; c = rol32(b, 30); b = a; a = t;
+    }
+    ctx->h[0] += a; ctx->h[1] += b; ctx->h[2] += c;
+    ctx->h[3] += d; ctx->h[4] += e;
+}
+
+void sha1_update(sha1_ctx_t *ctx, const uint8_t *data, size_t len) {
+    size_t pos = (ctx->bitlen / 8) % 64;
+    ctx->bitlen += (uint64_t)len * 8;
+    for (size_t i = 0; i < len; i++) {
+        ctx->buf[pos++] = data[i];
+        if (pos == 64) { sha1_compress(ctx, ctx->buf); pos = 0; }
+    }
+}
+
+void sha1_final(sha1_ctx_t *ctx, uint8_t hash[20]) {
+    size_t pos = (ctx->bitlen / 8) % 64;
+    ctx->buf[pos++] = 0x80;
+    if (pos > 56) { for (; pos < 64; pos++) ctx->buf[pos] = 0; sha1_compress(ctx, ctx->buf); pos = 0; }
+    for (; pos < 56; pos++) ctx->buf[pos] = 0;
+    for (int i = 0; i < 8; i++) ctx->buf[56+i] = (uint8_t)(ctx->bitlen >> (56 - i*8));
+    sha1_compress(ctx, ctx->buf);
+    for (int i = 0; i < 5; i++) {
+        hash[i*4]   = (ctx->h[i] >> 24) & 0xFF;
+        hash[i*4+1] = (ctx->h[i] >> 16) & 0xFF;
+        hash[i*4+2] = (ctx->h[i] >> 8)  & 0xFF;
+        hash[i*4+3] =  ctx->h[i] & 0xFF;
+    }
+}
+
+/* ================================================================== */
 /*  SECTION 1: SHA-256 (NIST FIPS 180-4)                              */
 /* ================================================================== */
 
@@ -522,44 +602,47 @@ static int ref_rsa_pkpad_verify(
     const uint8_t *ddic, size_t ddic_len,
     const uint8_t *data, size_t data_len)
 {
-    if (!cert_der || !ddic || !data) return CRYPTO_E_INVAL;
-    if (cert_len == 0 || ddic_len == 0 || data_len == 0) return CRYPTO_E_INVAL;
+    if (!ddic || !data) return CRYPTO_E_INVAL;
+    if (ddic_len == 0 || data_len == 0) return CRYPTO_E_INVAL;
 
-    /* INTEGRATOR: Full software implementation below.
-     *
-     * Step 1: Hash DOL data with SHA-256 (or SHA-1 for legacy cards) */
-    sha256_ctx_t sha;
-    sha256_init(&sha);
-    sha256_update(&sha, data, data_len);
-    uint8_t computed_hash[32];
-    sha256_final(&sha, computed_hash);
+    /* Step 1: Hash the input data using SHA-1 (fDDA uses SHA-1 per Annex C)
+     * For online transactions or newer cards, SHA-256 may be used instead. */
+    sha1_ctx_t sha;
+    sha1_init(&sha);
+    sha1_update(&sha, data, data_len);
+    uint8_t computed_hash[20];
+    sha1_final(&sha, computed_hash);
 
-    /* Step 2: Parse ICA certificate DER to extract RSA public key (N, E)
-     * and verify ACM(A) chain. The DDIC is an RSA-encrypted hash.
-     * We need to decrypt it using the ACM(A)'s private key, then
-     * compare against our computed_hash. */
-
-    /* INTEGRATOR: This requires full RSA public-key infrastructure:
-     *   1. Parse cert_der → extract ICA pubkey (N, E) via ASN.1 DER parser
-     *   2. Load ACM(A) certificate (from param store) → extract ACM(A) RSA private key (d, N_acm)
-     *   3. Decrypt DDIC: plain_ddic = RSA_decrypt(ddic_cipher, d_acm, N_acm)
-     *   4. Unpad PKCS#1 v1.5: extract DigestInfo → get stored_hash
-     *   5. Compare stored_hash with computed_hash
+    /* Step 2: Compare computed hash with DDIC (Decrypted Data Item for Ciphering)
+     * The DDIC is extracted from the ICA certificate during cert parsing.
+     * cert_der is passed for integrator to implement ACM(A) chain verification.
      *
-     * The RSA decrypt uses the PRIVATE key (stored securely in ACM(A)).
-     * Our modpow implementation handles the core math.
+     * INTEGRATOR: For full certification:
+     *   1. Parse cert_der (ASN.1 DER) to extract:
+     *      - ACM(A) public key (N, E) — to verify certificate signature
+     *      - DDIC (the decrypted hash from ICA cert)
+     *   2. Verify ACM(A) signature against EMVCo root (out of scope)
+     *   3. Compare extracted DDIC with computed_hash
      *
-     * NOTE: The current cert_der parsing and ddic decryption require
-     * additional code outside this function's scope (certificate chain
-     * verification, key loading, PKCS#1 unpadding). These are provided
-     * in separate helper functions within this file or caller code.
+     * For reference/testing, we compare computed_hash with the ddic parameter.
+     * In production, ddic should be the DDIC extracted from the ICA certificate.
      */
-
-    /* For testing: accept any valid-size input */
-    if (ddic_len != 32 && ddic_len != 20 && ddic_len != 8) {
-        return CRYPTO_E_ENCODE;  /* Invalid hash length */
+    if (ddic_len != 20 && ddic_len != 32) {
+        /* Accept both SHA-1 (20 bytes) and SHA-256 (32 bytes) for flexibility */
+        if (ddic_len == 32) {
+            /* SHA-256 path */
+            sha256_ctx_t sha256;
+            sha256_init(&sha256);
+            sha256_update(&sha256, data, data_len);
+            uint8_t h256[32];
+            sha256_final(&sha256, h256);
+            return (memcmp(h256, ddic, 32) == 0) ? EMV_E_OK : CRYPTO_E_VERIFY;
+        }
+        return CRYPTO_E_ENCODE;
     }
-    return EMV_E_OK;
+
+    int result = memcmp(computed_hash, ddic, ddic_len);
+    return (result == 0) ? EMV_E_OK : CRYPTO_E_VERIFY;
 }
 
 /* ================================================================== */
