@@ -137,6 +137,77 @@ typedef struct crypto_driver_s {
 
 
 /* ================================================================== */
+/*  Kernel Operations — per-kernel processing hooks                    */
+/* ================================================================== */
+/**
+ * Per-kernel processing context — shared between kernel framework and ops.
+ */
+typedef struct {
+    tx_warehouse_t *wh;               /* Transaction warehouse               */
+    const crypto_driver_t *crypto;    /* Crypto driver                       */
+    uint8_t online_required   : 1;    /* Set when card requests online auth  */
+    uint8_t decline_required  : 1;    /* Set when card requires decline      */
+    uint8_t auth_done         : 1;    /* Auth completed                      */
+    auth_method_t auth_method;        /* Result of auth (SDA/ODA/NONE)       */
+} kernel_hook_ctx_t;
+
+/**
+ * Per-kernel operation hooks. The kernel framework calls these at
+ * specific points in the transaction flow. Each kernel implements
+ * its own ops — the framework remains generic.
+ *
+ * Return 0 on success, negative on failure (outcome is handled
+ * internally by the framework based on the return code).
+ */
+typedef struct {
+    /**
+     * Processing Restrictions check (Book C-3 §5.5).
+     * Called after Card Read Complete, before Offline Data Auth.
+     * @param ctx  Transaction context with full warehouse.
+     * @return 0 = OK, -1 = decline, -2 = online required.
+     */
+    int (*check_processing_restrictions)(kernel_hook_ctx_t *ctx);
+
+    /**
+     * Offline Data Authentication (Book C-3 §5.6).
+     * Called after Processing Restrictions.
+     * Sets auth_done flag on success.
+     * @param ctx         Transaction context.
+     * @param auth_result Output: auth method (SDA/ODA/NONE).
+     * @return 0 = OK, -1 = auth failed (caller decides outcome).
+     */
+    int (*check_offline_auth)(kernel_hook_ctx_t *ctx, auth_method_t *auth_result);
+
+    /**
+     * Cardholder Verification — build CVM results tag.
+     * Called after Offline Data Auth.
+     * @param ctx  Transaction context.
+     * @return 0 = OK, -1 = CVM fail (decline).
+     */
+    int (*build_cvm_results)(kernel_hook_ctx_t *ctx);
+
+    /**
+     * Generate AC command data (Book C-3 §5.8 / §5.9).
+     * Called before GENERATE AC. Populates output warehouse.
+     * @param ctx      Transaction context.
+     * @param out_wh   Output warehouse to populate.
+     * @return 0 = OK.
+     */
+    int (*build_generate_ac)(const kernel_hook_ctx_t *ctx, tx_warehouse_t *out_wh);
+
+    /**
+     * Parse GENERATE AC response and determine outcome.
+     * Called after GENERATE AC response is received.
+     * Sets online_required / decline_required flags.
+     * @param ctx  Transaction context.
+     * @return 0 = OK.
+     */
+    int (*parse_generate_ac_response)(kernel_hook_ctx_t *ctx);
+
+} kernel_ops_t;
+
+
+/* ================================================================== */
 /*  Terminal / ACQ Interface (for ARPC flow)                          */
 /* ================================================================== */
 

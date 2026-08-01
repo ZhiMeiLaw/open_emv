@@ -113,14 +113,36 @@ int orchestrator_execute(uint8_t kernel_id);
 const outcome_result_t *orchestrator_get_outcome(void);
 
 /**
- * Build Terminal Conduction Data (TC) for an approved transaction.
- * Writes BER-TLV bytes ready to send to card.
+ * Build Terminal Conduction Data (TC) — orchestrator-level API.
+ * Uses the orchestrator's internal output warehouse.
  */
 int orchestrator_build_tc(uint8_t *tc_bytes, uint8_t *tc_len, uint8_t max_len);
 
 /**
- * Build No Application SDI Parameter (NASP) for a declined transaction.
+ * Build No Application SDI Parameter (NASP) — orchestrator-level API.
  */
 int orchestrator_build_nasp(uint8_t *nasp_bytes, uint8_t *nasp_len, uint8_t max_len);
+
+/**
+ * Build Terminal Conduction (TC) data from an ep_context warehouse.
+ * Output: [9F26] AC + [8A] ARC (if present) + [95] TVR
+ * @param tc_out     Output buffer for TC TLV bytes
+ * @param tc_max     Max output buffer size
+ * @param tc_len     On output: actual TC byte count
+ * @param ep_ctx     Entry point context (contains warehouse with results)
+ * @return 0 on success.
+ */
+int kernel_build_tc(uint8_t *tc_out, uint16_t tc_max, uint16_t *tc_len,
+                    const ep_context_t *ep_ctx);
+
+/**
+ * Build No Application SDI Parameter (NASP) for a declined transaction.
+ * Output: [9F2B] [02] [00] [00]
+ * @param nasp_out   Output buffer
+ * @param nasp_max   Max output buffer size
+ * @param nasp_len   On output: actual NASP byte count
+ * @return 0 on success.
+ */
+int kernel_build_nasp(uint8_t *nasp_out, uint16_t nasp_max, uint16_t *nasp_len);
 
 #endif /* EMV_KERNEL_ORCHESTRATOR_H */

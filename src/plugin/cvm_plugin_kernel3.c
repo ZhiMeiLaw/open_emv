@@ -60,16 +60,24 @@ static int has_ctq(const tx_warehouse_t *wh)
 /* ================================================================== */
 /**
  * Parse Cardholder Verification Requirements from CTQ (9F6C).
- * Per Book C-3 Table 5.6:
- *   Byte 1: B1=Online PIN Required, B2=CDCVM Supported
- *   Byte 2: B8=CDCVM Performed, B7=Signature Required
- *   Bytes 3-4: Reserved / future use
+ * Per Book C-3 Table A-1 / §5.7.1.2:
+ *   Byte 1: bit8=Online PIN Req, bit7=Signature Req, bit6=GoOnline-ODA-Fail,
+ *           bit5=Switch-ODA-Fail, bit4=GoOnline-Expired, bit3=Switch-Cash,
+ *           bit2=Switch-Cashback, bit1=RFU
+ *   Byte 2: bit8=CDCVM Performed, bit7=IssuerUpdate-POS, bits6-1=RFU
+ *   Bytes 3-4: Reserved
  */
 typedef struct {
-    uint8_t online_pin_required : 1;  /* CTQ byte 1 bit 8 */
-    uint8_t cdcvm_supported     : 1;  /* CTQ byte 1 bit 7 */
-    uint8_t cdcvm_performed     : 1;  /* CTQ byte 2 bit 8 */
-    uint8_t signature_required  : 1;  /* CTQ byte 1 bit 7 or byte 2 bit 7 */
+    uint8_t online_pin_required : 1;  /* Byte1 bit8 (index 0) */
+    uint8_t signature_required  : 1;  /* Byte1 bit7 (index 1) */
+    uint8_t go_online_oda_fail  : 1;  /* Byte1 bit6 (index 2) */
+    uint8_t switch_if_oda_fail  : 1;  /* Byte1 bit5 (index 3) */
+    uint8_t go_online_expired   : 1;  /* Byte1 bit4 (index 4) */
+    uint8_t switch_cash         : 1;  /* Byte1 bit3 (index 5) */
+    uint8_t switch_cashback     : 1;  /* Byte1 bit2 (index 6) */
+    uint8_t reserved_b1         : 1;  /* Byte1 bit1 (index 7) */
+    uint8_t cdcvm_performed     : 1;  /* Byte2 bit8 (index 8) */
+    uint8_t issuer_update_pos   : 1;  /* Byte2 bit7 (index 9) */
     uint8_t reserved[2];            /* CTQ bytes 3-4    */
 } ctq_fields_t;
 
@@ -78,12 +86,19 @@ static void ctq_parse(const uint8_t *ctq_bytes, uint8_t len, ctq_fields_t *out)
     memset(out, 0, sizeof(*out));
     if (!ctq_bytes || len < 1) return;
 
-    /* CTQ uses same bitmap ordering as other EMV bitmasks: MSB first */
-    out->online_pin_required  = bitmap_get(ctq_bytes, 0);     /* B1 bit 8 */
-    out->cdcvm_supported      = bitmap_get(ctq_bytes, 1);     /* B1 bit 7 */
+    /* EMV bitmaps: MSB first — bit index 0 = MSB of byte 0 */
+    out->online_pin_required  = bitmap_get(ctq_bytes, 0);   /* B1 bit 8 */
+    out->signature_required   = bitmap_get(ctq_bytes, 1);   /* B1 bit 7 */
+    out->go_online_oda_fail   = bitmap_get(ctq_bytes, 2);   /* B1 bit 6 */
+    out->switch_if_oda_fail   = bitmap_get(ctq_bytes, 3);   /* B1 bit 5 */
+    out->go_online_expired    = bitmap_get(ctq_bytes, 4);   /* B1 bit 4 */
+    out->switch_cash          = bitmap_get(ctq_bytes, 5);   /* B1 bit 3 */
+    out->switch_cashback      = bitmap_get(ctq_bytes, 6);   /* B1 bit 2 */
+    out->reserved_b1          = bitmap_get(ctq_bytes, 7);   /* B1 bit 1 */
+
     if (len > 1) {
-        out->cdcvm_performed  = bitmap_get(ctq_bytes + 1, 7); /* B2 bit 8 */
-        out->signature_required = bitmap_get(ctq_bytes + 1, 6); /* B2 bit 7 */
+        out->cdcvm_performed  = bitmap_get(ctq_bytes + 1, 0); /* B2 bit 8 */
+        out->issuer_update_pos = bitmap_get(ctq_bytes + 1, 1); /* B2 bit 7 */
     }
     if (len > 2) {
         out->reserved[0] = ctq_bytes[2];
@@ -126,58 +141,64 @@ static cvm_result_t kernel3_cvm_evaluate(const void *ctx_ptr)
         ctq_parse(ctq_entry ? ctq_entry->value : NULL,
                   ctq_entry ? (uint8_t)ctq_entry->len : 0, &ctq);
 
-        /* Priority 1: Online PIN Required (CTQ byte1 bit 8 = 1) */
+        /* Priority 1: Online PIN Required (CTQ byte1 bit 8 = index 0) */
         if (ctq.online_pin_required) {
             /* UI driver is platform-specific and not linked in reference impl.
              * In production: g_ui_driver = &my_platform_ui; */
-            build_cvm_results(&oc->output_wh, 0x02, 0x00);
+            build_cvm_results((tx_warehouse_t *)&oc->output_wh, 0x02, 0x00);
             return CVM_FAIL;  /* PIN required but no UI available */
             /* No PIN prompt available — decline */
             return CVM_FAIL;
         }
 
-        /* Priority 2: CDCVM Performed (CTQ byte2 bit 8 = 1) */
+        /* Priority 2: CDCVM Performed (CTQ byte2 bit 8 = index 8) */
         if (ctq.cdcvm_performed) {
             /* Validate Card Authentication Related Data (9F69) */
             const tlv_entry_t *card_auth_data = tlv_find(&oc->input_wh, 0x9F69);
             if (card_auth_data && card_auth_data->len >= 7) {
                 /* Compare 9F69 bytes 6-7 with CTQ bytes 1-2 */
-                uint8_t ctq_b12[2];
-                /* ctq_b12 would be extracted from warehouse CTQ entry */
-                (void)ctq_b12;
-                /* If match: Confirmation Code Verified */
-                build_cvm_results(&oc->output_wh, 0x01, 0x02);
+                uint8_t ctq_b1 = ctq_entry->value[0];
+                uint8_t ctq_b2 = (ctq_entry->len > 1) ? ctq_entry->value[1] : 0;
+                if (card_auth_data->value[5] == ctq_b1 &&
+                    card_auth_data->value[6] == ctq_b2) {
+                    /* Match → Confirmation Code Verified */
+                    build_cvm_results((tx_warehouse_t *)&oc->output_wh, 0x01, 0x02);
+                    return CVM_PASS;
+                }
+                /* Mismatch → decline */
+                return CVM_FAIL;
+            }
+            /* No 9F69 data — check if CID indicates ARQC (bits 8-7 = 0x08) */
+            const tlv_entry_t *cif = tlv_find(&oc->input_wh, 0x9F27);
+            if (cif && cif->len >= 1 && (cif->value[0] & 0x08)) {
+                /* ARQC → pass */
+                build_cvm_results((tx_warehouse_t *)&oc->output_wh, 0x01, 0x02);
                 return CVM_PASS;
             }
-            /* No 9F69 data and cryptogram is ARQC -> also pass */
-            const tlv_entry_t *arqc = tlv_find(&oc->input_wh, 0x9F26);
-            if (arqc) {
-                build_cvm_results(&oc->output_wh, 0x01, 0x02);
-                return CVM_PASS;
-            }
+            /* Not ARQC → decline */
             return CVM_FAIL;
         }
 
-        /* Priority 3: Signature Required (CTQ byte1 bit 7 = 1) */
+        /* Priority 3: Signature Required (CTQ byte1 bit 7 = index 1) */
         if (ctq.signature_required) {
             /* Book C-3: Request signature as fallback when no PIN/CDCVM */
             /* Signatory reader indicator set to 1, output CVM = Obtain Signature */
-            build_cvm_results(&oc->output_wh, 0x1E, 0x00);
+            build_cvm_results((tx_warehouse_t *)&oc->output_wh, 0x1E, 0x00);
             return CVM_PASS;
         }
 
         /* No specific CVM indicated by CTQ */
-        build_cvm_results(&oc->output_wh, 0x1F, 0x00);
+        build_cvm_results((tx_warehouse_t *)&oc->output_wh, 0x1F, 0x00);
         return CVM_PASS;
     }
 
     /* ---- Path B: CTQ NOT returned from card (fallback) ---- */
     if (amount <= pp->unsigned_limit) {
-        build_cvm_results(&oc->output_wh, 0x1F, 0x00);
+        build_cvm_results((tx_warehouse_t *)&oc->output_wh, 0x1F, 0x00);
         return CVM_PASS;
     }
     /* Fallback: No-CVM when CTQ absent */
-    build_cvm_results(&oc->output_wh, 0x1F, 0x00);
+    build_cvm_results((tx_warehouse_t *)&oc->output_wh, 0x1F, 0x00);
     return CVM_PASS;
 }
 

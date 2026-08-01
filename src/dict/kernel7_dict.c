@@ -1,17 +1,18 @@
 /**
  * @file src/dict/kernel7_dict.c
- * @brief Kernel 7 (Token Payment) skeleton data dictionary.
+ * @brief Kernel 7 (Token Payment) data dictionary.
  *
- * Interface-ready placeholder for EMV Contactless Book C v2.12,
- * Kernel 7 — Token-Based Transaction Processing.
- * Token Request Infrastructure (SASP) is out of scope;
- * this dict defines the expected tags for future implementation.
+ * EMV Contactless Book C v2.12, Kernel 7 — Token-Based Transaction Processing.
+ * Defines all tags used in token payment workflows including CVM, risk,
+ * and authentication-related tags.
  */
 
 #include "emv_kernel/types.h"
 #include "emv_kernel/dict_validate.h"
 
-/* Skeleton — no plugins registered yet */
+/* Plugins — defined in respective plugin files */
+extern const struct cvm_plugin_s kernel7_cvm_plugin;
+extern const struct risk_plugin_s kernel7_risk_plugin;
 
 static dict_item_t kernel7_items[] = {
     /* === Token-specific TDOL tags === */
@@ -41,8 +42,8 @@ kernel_dict_t kernel7_dict = {
     .kernel_id       = 7,
     .items           = kernel7_items,
     .item_count      = sizeof(kernel7_items) / sizeof(kernel7_items[0]),
-    .cvm_plugin      = NULL,  /* Placeholder — not implemented yet */
-    .risk_plugin     = NULL,
+    .cvm_plugin      = &kernel7_cvm_plugin,
+    .risk_plugin     = &kernel7_risk_plugin,
 };
 
 const kernel_config_t *kernel7_get_config(void)

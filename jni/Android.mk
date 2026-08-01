@@ -32,7 +32,9 @@ LOCAL_SRC_FILES := \
     $(ROOT_PATH)/src/plugin/cvm_plugin_kernel5.c \
     $(ROOT_PATH)/src/plugin/cvm_plugin_kernel7.c \
     $(ROOT_PATH)/src/plugin/risk_plugin_kernel3.c \
-    $(ROOT_PATH)/src/plugin/risk_plugin_kernel5.c
+    $(ROOT_PATH)/src/plugin/risk_plugin_kernel5.c \
+    $(ROOT_PATH)/src/plugin/risk_plugin_kernel7.c \
+    $(ROOT_PATH)/src/plugin/kernel_ops_kernel3.c
 
 LOCAL_C_INCLUDES += $(ROOT_PATH)/include
 
@@ -66,7 +68,9 @@ LOCAL_SRC_FILES := \
     $(ROOT_PATH)/src/plugin/cvm_plugin_kernel5.c \
     $(ROOT_PATH)/src/plugin/cvm_plugin_kernel7.c \
     $(ROOT_PATH)/src/plugin/risk_plugin_kernel3.c \
-    $(ROOT_PATH)/src/plugin/risk_plugin_kernel5.c
+    $(ROOT_PATH)/src/plugin/risk_plugin_kernel5.c \
+    $(ROOT_PATH)/src/plugin/risk_plugin_kernel7.c \
+    $(ROOT_PATH)/src/plugin/kernel_ops_kernel3.c
 
 LOCAL_C_INCLUDES += $(ROOT_PATH)/include
 LOCAL_CFLAGS   += -std=c99 -pedantic -Wall -Wextra -Werror=return-type -fPIC
@@ -98,8 +102,8 @@ include $(BUILD_EXECUTABLE)
 
 include $(CLEAR_VARS)
 
-LOCAL_MODULE    := test_bitmap
-LOCAL_SRC_FILES := $(ROOT_PATH)/tests/unit/test_bitmap.c
+LOCAL_MODULE    := test_ctq_parse
+LOCAL_SRC_FILES := $(ROOT_PATH)/tests/unit/test_ctq_parse.c $(ROOT_PATH)/src/utils/bitmap.c
 LOCAL_C_INCLUDES += $(ROOT_PATH)/include
 LOCAL_CFLAGS    += -std=c99 -pedantic -Wall -Wno-unused-parameter -Wno-unused-variable
 LOCAL_STATIC_LIBRARIES := emv_kernel_static
@@ -116,7 +120,38 @@ LOCAL_SRC_FILES := \
     $(ROOT_PATH)/examples/ref_k3/k3_ref_transaction.c \
     $(ROOT_PATH)/examples/ref_k3/k3_ref_crypto.c \
     $(ROOT_PATH)/examples/ref_k3/k3_ref_platform.c \
-    $(ROOT_PATH)/examples/ref_k3/k3_ref_icr_mock.c
+    $(ROOT_PATH)/examples/ref_k3/k3_ref_icr_mock.c \
+    $(ROOT_PATH)/examples/ref_k3/kernel3_process.c
+LOCAL_C_INCLUDES += $(ROOT_PATH)/include
+LOCAL_CFLAGS    += -std=c99 -pedantic -Wall -Wno-unused-parameter -Wno-unused-variable
+LOCAL_STATIC_LIBRARIES := emv_kernel_static
+
+include $(BUILD_EXECUTABLE)
+
+# ====================================================================
+# Reference example: K7 full transaction flow (Token Payment)
+# ====================================================================
+include $(CLEAR_VARS)
+
+LOCAL_MODULE    := ref_k7_transaction
+LOCAL_SRC_FILES := \
+    $(ROOT_PATH)/examples/ref_k7/k7_ref_transaction.c \
+    $(ROOT_PATH)/examples/ref_k7/k7_ref_platform.c \
+    $(ROOT_PATH)/examples/ref_k7/k7_ref_icr_mock.c \
+    $(ROOT_PATH)/examples/ref_k7/kernel7_process.c
+LOCAL_C_INCLUDES += $(ROOT_PATH)/include
+LOCAL_CFLAGS    += -std=c99 -pedantic -Wall -Wno-unused-parameter -Wno-unused-variable
+LOCAL_STATIC_LIBRARIES := emv_kernel_static
+
+include $(BUILD_EXECUTABLE)
+
+# ====================================================================
+# Test: Kernel 7 Risk Plugin
+# ====================================================================
+include $(CLEAR_VARS)
+
+LOCAL_MODULE    := test_risk_plugin_k7
+LOCAL_SRC_FILES := $(ROOT_PATH)/tests/unit/test_risk_plugin_k7.c $(ROOT_PATH)/src/plugin/risk_plugin_kernel7.c $(ROOT_PATH)/src/core/warehouse.c $(ROOT_PATH)/src/utils/bitmap.c
 LOCAL_C_INCLUDES += $(ROOT_PATH)/include
 LOCAL_CFLAGS    += -std=c99 -pedantic -Wall -Wno-unused-parameter -Wno-unused-variable
 LOCAL_STATIC_LIBRARIES := emv_kernel_static

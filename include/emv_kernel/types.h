@@ -273,12 +273,15 @@ typedef struct {
 /* ------------------------------------------------------------------ */
 /*  Kernel config — plugin pointers plus metadata                     */
 /* ------------------------------------------------------------------ */
+/* kernel_ops_t defined in kernel_interface.h */
+
 typedef struct {
     uint8_t  kernel_id;               /* 3, 4, 5, 6, 7, ...               */
     const dict_item_t *items;         /* Tag dictionary                   */
     uint8_t  item_count;              /* Number of items in dictionary     */
     const struct cvm_plugin_s *cvm_plugin;
     const struct risk_plugin_s *risk_plugin;
+    const struct kernel_ops_s *ops;   /* Per-kernel processing hooks       */
 } kernel_config_t;
 
 /* ------------------------------------------------------------------ */
@@ -290,6 +293,7 @@ typedef struct {
     uint8_t  item_count;
     const struct cvm_plugin_s *cvm_plugin;
     const struct risk_plugin_s *risk_plugin;
+    const struct kernel_ops_s *ops;    /* Per-kernel processing hooks */
 } kernel_dict_t;
 
 #endif /* EMV_KERNEL_TYPES_H */
