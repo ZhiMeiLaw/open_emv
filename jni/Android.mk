@@ -114,6 +114,15 @@ LOCAL_STATIC_LIBRARIES := emv_kernel_static
 
 include $(BUILD_EXECUTABLE)
 
+include $(CLEAR_VARS)
+
+LOCAL_MODULE    := test_sha1
+LOCAL_SRC_FILES := $(ROOT_PATH)/tests/unit/test_sha1.c
+LOCAL_C_INCLUDES += $(ROOT_PATH)/include
+LOCAL_CFLAGS    += -std=c99 -pedantic -Wall -Wno-unused-parameter -Wno-unused-variable
+
+include $(BUILD_EXECUTABLE)
+
 # ====================================================================
 # Reference example: K3 full transaction flow
 # ====================================================================
