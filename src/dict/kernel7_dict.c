@@ -10,9 +10,10 @@
 #include "emv_kernel/types.h"
 #include "emv_kernel/dict_validate.h"
 
-/* Plugins — defined in respective plugin files */
+/* Forward declarations */
 extern const struct cvm_plugin_s kernel7_cvm_plugin;
 extern const struct risk_plugin_s kernel7_risk_plugin;
+extern const struct kernel_ops_s *k7_get_kernel_ops(void);
 
 static dict_item_t kernel7_items[] = {
     /* === Token-specific TDOL tags === */
@@ -44,6 +45,7 @@ kernel_dict_t kernel7_dict = {
     .item_count      = sizeof(kernel7_items) / sizeof(kernel7_items[0]),
     .cvm_plugin      = &kernel7_cvm_plugin,
     .risk_plugin     = &kernel7_risk_plugin,
+    .ops             = NULL,  /* Set at registration time */
 };
 
 const kernel_config_t *kernel7_get_config(void)

@@ -34,7 +34,8 @@ LOCAL_SRC_FILES := \
     $(ROOT_PATH)/src/plugin/risk_plugin_kernel3.c \
     $(ROOT_PATH)/src/plugin/risk_plugin_kernel5.c \
     $(ROOT_PATH)/src/plugin/risk_plugin_kernel7.c \
-    $(ROOT_PATH)/src/plugin/kernel_ops_kernel3.c
+    $(ROOT_PATH)/src/plugin/kernel_ops_kernel3.c \
+    $(ROOT_PATH)/src/plugin/kernel_ops_kernel7.c
 
 LOCAL_C_INCLUDES += $(ROOT_PATH)/include
 
@@ -70,7 +71,8 @@ LOCAL_SRC_FILES := \
     $(ROOT_PATH)/src/plugin/risk_plugin_kernel3.c \
     $(ROOT_PATH)/src/plugin/risk_plugin_kernel5.c \
     $(ROOT_PATH)/src/plugin/risk_plugin_kernel7.c \
-    $(ROOT_PATH)/src/plugin/kernel_ops_kernel3.c
+    $(ROOT_PATH)/src/plugin/kernel_ops_kernel3.c \
+    $(ROOT_PATH)/src/plugin/kernel_ops_kernel7.c
 
 LOCAL_C_INCLUDES += $(ROOT_PATH)/include
 LOCAL_CFLAGS   += -std=c99 -pedantic -Wall -Wextra -Werror=return-type -fPIC
