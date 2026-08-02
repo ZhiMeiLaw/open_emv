@@ -151,6 +151,7 @@ LOCAL_SRC_FILES := \
     $(ROOT_PATH)/examples/ref_k7/k7_ref_transaction.c \
     $(ROOT_PATH)/examples/ref_k7/k7_ref_platform.c \
     $(ROOT_PATH)/examples/ref_k7/k7_ref_icr_mock.c \
+    $(ROOT_PATH)/examples/ref_k7/k7_ref_crypto.c
     $(ROOT_PATH)/examples/ref_k7/kernel7_process.c
 LOCAL_C_INCLUDES += $(ROOT_PATH)/include
 LOCAL_CFLAGS    += -std=c99 -pedantic -Wall -Wno-unused-parameter -Wno-unused-variable
