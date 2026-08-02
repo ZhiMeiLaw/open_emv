@@ -179,4 +179,14 @@ LOCAL_C_INCLUDES += $(ROOT_PATH)/include
 LOCAL_CFLAGS    += -std=c99 -pedantic -Wall -Wno-unused-parameter -Wno-unused-variable
 LOCAL_STATIC_LIBRARIES := emv_kernel_static
 
+include $(BUILD_EXECUTABLE)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE    := test_k5_e2e
+LOCAL_SRC_FILES := $(ROOT_PATH)/tests/integration/test_k5_e2e.c
+LOCAL_C_INCLUDES += $(ROOT_PATH)/include
+LOCAL_CFLAGS    += -std=c99 -pedantic -Wall -Wno-unused-parameter -Wno-unused-variable
+LOCAL_STATIC_LIBRARIES := emv_kernel_static
+
 include $(BUILD_EXECUTABLE)include $(BUILD_EXECUTABLE)
