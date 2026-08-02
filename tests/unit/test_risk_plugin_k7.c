@@ -62,7 +62,7 @@ TEST(test_risk_check_sds_missing) {
 
     orchestrator_ctx_t oc;
     memset(&oc, 0, sizeof(oc));
-    oc.input_wh = &wh;
+    oc.input_wh = wh;
     oc.pos_params = NULL; /* No POS params — SDS validation should fail gracefully */
 
     risk_result_t result = kernel7_risk_plugin.check(&oc, RISK_CHECK_SDS);
@@ -74,11 +74,11 @@ TEST(test_risk_check_sds_missing) {
 TEST(test_risk_check_trm) {
     uint8_t pool[1024];
     tx_warehouse_t wh;
-    tlv_warehouse_init(&pool, pool, sizeof(pool));
+    tlv_warehouse_init(&wh, pool, sizeof(pool));
 
     orchestrator_ctx_t oc;
     memset(&oc, 0, sizeof(oc));
-    oc.input_wh = &wh;
+    oc.input_wh = wh;
 
     risk_result_t result = kernel7_risk_plugin.check(&oc, RISK_CHECK_TRM);
     ASSERT_EQ(result, RISK_PASS, "TRM check returns PASS");
@@ -103,7 +103,7 @@ TEST(test_risk_check_tdol_pass) {
 
     orchestrator_ctx_t oc;
     memset(&oc, 0, sizeof(oc));
-    oc.input_wh = &wh;
+    oc.input_wh = wh;
     oc.pos_params = NULL;
 
     risk_result_t result = kernel7_risk_plugin.check(&oc, RISK_CHECK_TDOL);
@@ -122,7 +122,7 @@ TEST(test_risk_check_tdol_fail) {
 
     orchestrator_ctx_t oc;
     memset(&oc, 0, sizeof(oc));
-    oc.input_wh = &wh;
+    oc.input_wh = wh;
     oc.pos_params = NULL;
 
     risk_result_t result = kernel7_risk_plugin.check(&oc, RISK_CHECK_TDOL);
@@ -145,7 +145,7 @@ TEST(test_build_tc_risk_data) {
 
     orchestrator_ctx_t oc;
     memset(&oc, 0, sizeof(oc));
-    oc.input_wh = &input_wh;
+    oc.input_wh = input_wh;
 
     int rc = kernel7_risk_plugin.build_tc_risk_data(&oc, &tc_wh);
     ASSERT_EQ(rc, 0, "build_tc_risk_data returns 0 on success");
@@ -172,7 +172,7 @@ TEST(test_risk_check_cvm) {
 
     orchestrator_ctx_t oc;
     memset(&oc, 0, sizeof(oc));
-    oc.input_wh = &wh;
+    oc.input_wh = wh;
 
     risk_result_t result = kernel7_risk_plugin.check(&oc, RISK_CHECK_CVM);
     (void)result; /* K7 CVM check is mostly informational */

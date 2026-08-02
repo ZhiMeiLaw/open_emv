@@ -73,7 +73,7 @@ static risk_result_t kernel7_risk_check(const void *ctx_ptr, risk_check_type_t t
     if (!oc) return RISK_PASS;
 
     /* Validate warehouse is populated */
-    if (!oc->input_wh || oc->input_wh->count == 0) {
+    if (oc->input_wh.count == 0) {
         return RISK_PASS; /* Not a failure, just no data to check */
     }
 
@@ -103,10 +103,10 @@ static risk_result_t kernel7_risk_check(const void *ctx_ptr, risk_check_type_t t
         /* Velocity Enforcement — amount and frequency limits */
         /* K7: Token-specific velocity checks */
         {
-            uint8_t *amount_authorised = tlv_find_value(&oc->input_wh, 0x9F02);
-            if (amount_authorised) {
+            const tlv_entry_t *amt_e = tlv_find(&oc->input_wh, 0x9F02);
+            if (amt_e) {
                 /* Check if amount exceeds terminal velocity threshold */
-                (void)amount_authorised;
+                (void)amt_e;
             }
             return RISK_PASS;
         }
