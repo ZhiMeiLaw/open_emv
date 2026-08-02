@@ -189,4 +189,4 @@ LOCAL_C_INCLUDES += $(ROOT_PATH)/include
 LOCAL_CFLAGS    += -std=c99 -pedantic -Wall -Wno-unused-parameter -Wno-unused-variable
 LOCAL_STATIC_LIBRARIES := emv_kernel_static
 
-include $(BUILD_EXECUTABLE)include $(BUILD_EXECUTABLE)
+include $(BUILD_EXECUTABLE)
