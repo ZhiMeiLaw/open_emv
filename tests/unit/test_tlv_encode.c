@@ -28,6 +28,13 @@ static int g_tests_fail = 0;
     } \
 } while (0)
 
+#define ASSERT_GT(a, b, msg) do { \
+    if ((a) <= (b)) { \
+        printf("FAIL: %s (expected > %d, got=%d)\n", msg, (int)(b), (int)(a)); \
+        g_tests_fail++; \
+    } \
+} while (0)
+
 /* ---- Test: 1-byte tag encodes to 1 byte ---- */
 TEST(test_tag_1byte_encode) {
     uint8_t out[4];
