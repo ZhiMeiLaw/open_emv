@@ -160,6 +160,24 @@ LOCAL_STATIC_LIBRARIES := emv_kernel_static
 include $(BUILD_EXECUTABLE)
 
 # ====================================================================
+# Reference example: K5 full transaction flow (qVISA / Crypto)
+# ====================================================================
+include $(CLEAR_VARS)
+
+LOCAL_MODULE    := ref_k5_transaction
+LOCAL_SRC_FILES := \
+    $(ROOT_PATH)/examples/ref_k5/k5_ref_transaction.c \
+    $(ROOT_PATH)/examples/ref_k5/k5_ref_crypto.c \
+    $(ROOT_PATH)/examples/ref_k5/k5_ref_platform.c \
+    $(ROOT_PATH)/examples/ref_k5/k5_ref_icr_mock.c \
+    $(ROOT_PATH)/examples/ref_k5/kernel5_process.c
+LOCAL_C_INCLUDES += $(ROOT_PATH)/include
+LOCAL_CFLAGS    += -std=c99 -pedantic -Wall -Wno-unused-parameter -Wno-unused-variable
+LOCAL_STATIC_LIBRARIES := emv_kernel_static
+
+include $(BUILD_EXECUTABLE)
+
+# ====================================================================
 # Test: Kernel 7 Risk Plugin
 # ====================================================================
 include $(CLEAR_VARS)
