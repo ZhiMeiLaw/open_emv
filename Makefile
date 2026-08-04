@@ -122,18 +122,18 @@ unit: $(BUILD)/test_warehouse $(BUILD)/test_tlv_encode \
 	exit $$failed
 
 # ---- Integration tests ----
-integration: $(BUILD)/test_k3_e2e $(BUILD)/test_k5_e2e $(BUILD)/test_k7_e2e
+integration: $(BUILD)/test_k3_e2e $(BUILD)/test_k5_e2e $(BUILD)/test_k7_e2e $(BUILD)/test_iccdb_update
 	@echo ""
 	@echo "=== Integration Tests ==="
 	@failed=0; \
-	for t in $(BUILD)/test_k3_e2e $(BUILD)/test_k5_e2e $(BUILD)/test_k7_e2e; do \
+	for t in $(BUILD)/test_k3_e2e $(BUILD)/test_k5_e2e $(BUILD)/test_k7_e2e $(BUILD)/test_iccdb_update; do \
 	  if $$t > /dev/null 2>&1; then \
 	    echo "  PASS  $$t"; \
 	  else \
 	    echo "  FAIL  $$t"; failed=1; \
 	  fi; \
 	done; \
-	echo ""; echo "Integration: 3 passed, $$failed failed"; \
+	echo ""; echo "Integration: 4 passed, $$failed failed"; \
 	exit $$failed
 
 # ---- Reference examples ----
@@ -193,6 +193,9 @@ $(BUILD)/test_k5_e2e: $(INTEG)/test_k5_e2e.c $(HOST_LIB) | $(BUILD)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 $(BUILD)/test_k7_e2e: $(INTEG)/test_k7_e2e.c $(HOST_LIB) | $(BUILD)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+$(BUILD)/test_iccdb_update: $(INTEG)/test_iccdb_update.c $(HOST_LIB) | $(BUILD)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 # ---- Reference examples (full kernel library + ref-specific files) ----
