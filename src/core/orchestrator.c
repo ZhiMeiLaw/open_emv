@@ -8,7 +8,34 @@
 #include "emv_kernel/tlv_encode.h"
 #include "emv_kernel/kernel_registry.h"
 #include "emv_kernel/errors.h"
+#include "emv_kernel/platform.h"
 #include <string.h>
+
+/* ---- Card hash helper ------------------------------------------------ */
+/**
+ * Derive an 8-byte card identifier from the transaction warehouse.
+ * Uses PAN (tag 0x5A) as primary source; falls back to AID (tag 0x4F).
+ * Result is an XOR-fold of the source bytes into 8 bytes.
+ */
+void orchestrator_compute_card_hash(const tx_warehouse_t *wh, uint8_t *out_hash)
+{
+    if (!wh || !out_hash) return;
+
+    const tlv_entry_t *pan = tlv_find(wh, 0x5A);
+    const tlv_entry_t *src = (pan && pan->len >= 8) ? pan :
+                             ((pan && pan->len > 0) ? pan :
+                              tlv_find(wh, 0x4F));  /* fall back to AID */
+
+    if (!src || src->len == 0) {
+        memset(out_hash, 0, 8);
+        return;
+    }
+
+    memset(out_hash, 0, 8);
+    for (uint16_t i = 0; i < src->len; i++) {
+        out_hash[i % 8] ^= src->value[i];
+    }
+}
 
 static orchestrator_ctx_t g_oc;
 static outcome_result_t g_last_outcome;
@@ -92,6 +119,14 @@ int orchestrator_execute(uint8_t kernel_id)
         g_last_outcome.code = OUTCOME_APPROVE_TERMINAL_CONDS;
     } else {
         g_last_outcome.code = OUTCOME_DECLINE;
+    }
+
+    /* Update ICCDB counters on approval */
+    if (g_last_outcome.code == OUTCOME_APPROVE_TERMINAL_CONDS ||
+        g_last_outcome.code == OUTCOME_APPROVE_ISSUER_AUTH) {
+        if (cfg->risk_plugin && cfg->risk_plugin->update_iccdb && g_oc.iccdb) {
+            cfg->risk_plugin->update_iccdb(g_oc.iccdb, &g_oc);
+        }
     }
 
     memcpy(&g_oc.result, &g_last_outcome, sizeof(outcome_result_t));

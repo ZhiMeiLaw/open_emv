@@ -145,4 +145,13 @@ int kernel_build_tc(uint8_t *tc_out, uint16_t tc_max, uint16_t *tc_len,
  */
 int kernel_build_nasp(uint8_t *nasp_out, uint16_t nasp_max, uint16_t *nasp_len);
 
+/**
+ * Derive an 8-byte card identifier from the transaction warehouse.
+ * Uses PAN (tag 0x5A) as primary source; falls back to AID (tag 0x4F).
+ * Result is an XOR-fold of source bytes into 8 bytes.
+ * @param wh         Transaction warehouse
+ * @param out_hash   Output buffer (must be at least 8 bytes)
+ */
+void orchestrator_compute_card_hash(const tx_warehouse_t *wh, uint8_t *out_hash);
+
 #endif /* EMV_KERNEL_ORCHESTRATOR_H */

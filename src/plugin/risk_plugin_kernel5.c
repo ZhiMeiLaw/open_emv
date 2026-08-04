@@ -61,10 +61,25 @@ static int kernel5_risk_build_tc(const void *ctx_ptr, tx_warehouse_t *tc_wh)
 
 static int kernel5_risk_update_iccdb(void *iccdb_ptr, const void *ctx_ptr)
 {
-    (void)iccdb_ptr;
-    (void)ctx_ptr;
-    /* qVISA minimal ICCDB update — just increment HF counter */
-    return 0;
+    if (!iccdb_ptr || !ctx_ptr) return PLAT_E_INVAL;
+
+    const orchestrator_ctx_t *oc = (const orchestrator_ctx_t *)ctx_ptr;
+    if (!oc || !oc->input_wh) return PLAT_E_INVAL;
+
+    uint8_t card_hash[8];
+    orchestrator_compute_card_hash(oc->input_wh, card_hash);
+
+    /* Increment HF counter (K5 minimal update — no CRM/VEL) */
+    uint8_t hf[2] = {0};
+    uint8_t hf_len = (uint8_t)sizeof(hf);
+    iccdb_read(card_hash, ICCDB_FIELD_HF_COUNTER, hf, &hf_len);
+    uint16_t new_val = ((uint16_t)hf[0] << 8) | hf[1];
+    new_val++;
+    hf[0] = (uint8_t)(new_val >> 8);
+    hf[1] = (uint8_t)(new_val & 0xFF);
+    iccdb_write(card_hash, ICCDB_FIELD_HF_COUNTER, hf, sizeof(hf));
+
+    return PLAT_E_OK;
 }
 
 struct risk_plugin_s kernel5_risk_plugin = {

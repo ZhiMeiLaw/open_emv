@@ -207,20 +207,35 @@ static int kernel7_risk_build_tc(const void *ctx_ptr, tx_warehouse_t *tc_wh)
 
 static int kernel7_risk_update_iccdb(void *iccdb_ptr, const void *ctx_ptr)
 {
-    (void)iccdb_ptr;
-    (void)ctx_ptr;
+    if (!iccdb_ptr || !ctx_ptr) return PLAT_E_INVAL;
 
-    /* K7-specific ICCDB updates:
-     * 1. Increment token usage counter (HF counter)
-     * 2. Update online counter
-     * 3. Update token transaction history log
-     * 4. Potentially update token expiration tracking
-     *
-     * Implementation would call:
-     *   iccdb_write(card_hash, FIELD_HF_COUNTER, &counter, 2);
-     *   iccdb_write(card_hash, FIELD_ONLINE_COUNTER, &online, 2);
-     */
-    return 0;
+    const orchestrator_ctx_t *oc = (const orchestrator_ctx_t *)ctx_ptr;
+    if (!oc || !oc->input_wh) return PLAT_E_INVAL;
+
+    uint8_t card_hash[8];
+    orchestrator_compute_card_hash(oc->input_wh, card_hash);
+
+    /* 1. Increment HF (high-frequency) counter */
+    uint8_t hf[2] = {0};
+    uint8_t hf_len = (uint8_t)sizeof(hf);
+    iccdb_read(card_hash, ICCDB_FIELD_HF_COUNTER, hf, &hf_len);
+    uint16_t hf_val = ((uint16_t)hf[0] << 8) | hf[1];
+    hf_val++;
+    hf[0] = (uint8_t)(hf_val >> 8);
+    hf[1] = (uint8_t)(hf_val & 0xFF);
+    iccdb_write(card_hash, ICCDB_FIELD_HF_COUNTER, hf, sizeof(hf));
+
+    /* 2. Increment online counter */
+    uint8_t online[2] = {0};
+    uint8_t on_len = (uint8_t)sizeof(online);
+    iccdb_read(card_hash, ICCDB_FIELD_ONLINE_COUNTER, online, &on_len);
+    uint16_t on_val = ((uint16_t)online[0] << 8) | online[1];
+    on_val++;
+    online[0] = (uint8_t)(on_val >> 8);
+    online[1] = (uint8_t)(on_val & 0xFF);
+    iccdb_write(card_hash, ICCDB_FIELD_ONLINE_COUNTER, online, sizeof(online));
+
+    return PLAT_E_OK;
 }
 
 /* ================================================================== */
