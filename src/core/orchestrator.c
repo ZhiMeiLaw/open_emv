@@ -124,6 +124,11 @@ int orchestrator_execute(uint8_t kernel_id)
     /* Update ICCDB counters on approval */
     if (g_last_outcome.code == OUTCOME_APPROVE_TERMINAL_CONDS ||
         g_last_outcome.code == OUTCOME_APPROVE_ISSUER_AUTH) {
+        /* Populate TC risk data (TVR, Terminal Qualifiers, etc.) */
+        if (cfg->risk_plugin && cfg->risk_plugin->build_tc_risk_data) {
+            cfg->risk_plugin->build_tc_risk_data(&g_oc, &g_oc.output_wh);
+        }
+        /* Increment card state counters */
         if (cfg->risk_plugin && cfg->risk_plugin->update_iccdb && g_oc.iccdb) {
             cfg->risk_plugin->update_iccdb(g_oc.iccdb, &g_oc);
         }
