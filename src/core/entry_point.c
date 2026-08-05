@@ -277,8 +277,39 @@ int entry_point_activate_kernel(ep_context_t *ctx)
 {
     if (!ctx || !ctx->wh) return EP_E_INVAL;
 
-    /* TODO: Read pre-processing config from parameter store */
-    /* TODO: Build Kernel Identifier-Terminal (96) tag */
+    /* Integration point: load pre-processing configuration.
+     *
+     * The terminal should populate tags that the kernel needs before
+     * it begins execution. The minimum required set per Book B §3.4:
+     *   - [9F1A] Terminal Country Code (param_read or store)
+     *   - [5F2A] Transaction Currency Code
+     *   - [9F02] Amount, Authorised (set by POS)
+     *   - [9F66] Terminal Qualifiers
+     *
+     * In production: call param_read() for each required tag, or load
+     * from a pre-initialised parameter store.
+     *
+     * Example:
+     *   uint8_t tc[] = { 0x06, 0x08 }; /* GB */
+     *   param_read(0x9F1A, buf, &blen);
+     *   tlv_store_set(ctx->wh, 0x9F1A, buf, blen);
+     */
+
+    /* Integration point: build Kernel Identifier-Terminal [9F2A].
+     *
+     * Per Book B §3.4.1, the terminal stores the kernel ID it selected
+     * into the warehouse so the kernel can read it. The value is the
+     * 1-byte kernel identifier (3=K3 debit, 5=K5 crypto, 7=K7 token).
+     *
+     * In production: derive from selected_kernel_id and store in warehouse:
+     *   uint8_t kid = ctx->selected_kernel_id;
+     *   tlv_store_set(ctx->wh, 0x9F2A, &kid, 1);
+     *
+     * This tag is used by:
+     *   - kernel_ops_t to verify kernel compatibility
+     *   - risk_plugin for kernel-specific risk rules
+     */
+    (void)ctx;
 
     return EMV_E_OK;
 }
