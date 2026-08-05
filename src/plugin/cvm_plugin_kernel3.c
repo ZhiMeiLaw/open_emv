@@ -143,11 +143,32 @@ static cvm_result_t kernel3_cvm_evaluate(const void *ctx_ptr)
 
         /* Priority 1: Online PIN Required (CTQ byte1 bit 8 = index 0) */
         if (ctq.online_pin_required) {
-            /* UI driver is platform-specific and not linked in reference impl.
-             * In production: g_ui_driver = &my_platform_ui; */
+            if (oc->ui_driver && oc->ui_driver->prompt_pin) {
+                /* Prompt for PIN, encrypt and verify */
+                const tlv_entry_t *pan_e = tlv_find(&oc->input_wh, 0x5A);
+                if (pan_e && pan_e->len >= 5) {
+                    uint8_t pin_block[16];
+                    uint16_t pin_block_len = sizeof(pin_block);
+                    int pin_rc = oc->ui_driver->prompt_pin(
+                        pan_e->value, (uint16_t)pan_e->len,
+                        pin_block, &pin_block_len,
+                        pp->pin_key_index
+                    );
+                    if (pin_rc == 0) {
+                        /* PIN entered successfully */
+                        build_cvm_results((tx_warehouse_t *)&oc->output_wh, 0x02, 0x02);
+                        return CVM_PASS;
+                    }
+                    if (pin_rc == -2) {
+                        /* Wrong PIN entered */
+                        build_cvm_results((tx_warehouse_t *)&oc->output_wh, 0x02, 0x01);
+                        return CVM_FAIL;
+                    }
+                    /* pin_rc == -1 (timeout/cancel) → fall through to decline */
+                }
+            }
+            /* No UI driver or PAN not available — decline */
             build_cvm_results((tx_warehouse_t *)&oc->output_wh, 0x02, 0x00);
-            return CVM_FAIL;  /* PIN required but no UI available */
-            /* No PIN prompt available — decline */
             return CVM_FAIL;
         }
 
@@ -181,6 +202,8 @@ static cvm_result_t kernel3_cvm_evaluate(const void *ctx_ptr)
 
         /* Priority 3: Signature Required (CTQ byte1 bit 7 = index 1) */
         if (ctq.signature_required) {
+            if (oc->ui_driver && oc->ui_driver->display_message)
+                oc->ui_driver->display_message("Please sign receipt");
             /* Book C-3: Request signature as fallback when no PIN/CDCVM */
             /* Signatory reader indicator set to 1, output CVM = Obtain Signature */
             build_cvm_results((tx_warehouse_t *)&oc->output_wh, 0x1E, 0x00);

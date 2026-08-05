@@ -45,7 +45,8 @@ static outcome_result_t g_last_outcome;
 int orchestrator_init(orchestrator_ctx_t *oc,
                       const crypto_driver_t *crypto,
                       const term_acq_interface_t *acq_iface,
-                      const void *pos_params)
+                      const void *pos_params,
+                      const ui_driver_t *ui_driver)
 {
     if (!oc) return ORCH_E_INVAL;
 
@@ -53,6 +54,7 @@ int orchestrator_init(orchestrator_ctx_t *oc,
     oc->crypto = crypto;
     oc->acq_iface = acq_iface;
     oc->pos_params = pos_params;
+    oc->ui_driver = ui_driver;
     oc->auth_method = AUTH_NONE;
 
     static uint8_t pool_in[MAX_POOL_SIZE];

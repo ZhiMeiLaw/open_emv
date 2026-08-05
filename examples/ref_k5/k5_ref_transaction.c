@@ -118,7 +118,7 @@ int k5_execute_transaction(const struct ic_reader_provider_s *icr,
 
     /* Step C3: Run kernel execution via orchestrator. */
     orchestrator_ctx_t oc;
-    ret = orchestrator_init(&oc, &k5_ref_crypto_driver, NULL, pos_params);
+    ret = orchestrator_init(&oc, &k5_ref_crypto_driver, NULL, pos_params, NULL);
     if (ret < 0) {
         if (outcome) *outcome = OUTCOME_ERROR;
         return ret;

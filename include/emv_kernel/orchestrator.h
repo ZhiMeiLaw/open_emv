@@ -11,6 +11,7 @@
 #include "emv_kernel/kernel_interface.h"
 #include "emv_kernel/errors.h"
 #include "emv_kernel/entry_point.h"
+#include "emv_kernel/ui_driver.h"
 
 /* Forward declaration — defined as struct ep_context_t in entry_point.h */
 struct ep_context_t;
@@ -76,6 +77,9 @@ typedef struct {
     const crypto_driver_t *crypto;
     const term_acq_interface_t *acq_iface;
 
+    /* UI driver for PIN prompt / display (optional, may be NULL) */
+    const ui_driver_t *ui_driver;
+
     /* Final outcome */
     outcome_result_t result;
 
@@ -97,7 +101,8 @@ typedef struct {
 int orchestrator_init(orchestrator_ctx_t *oc,
                       const crypto_driver_t *crypto,
                       const term_acq_interface_t *acq_iface,
-                      const void *pos_params);
+                      const void *pos_params,
+                      const ui_driver_t *ui_driver);
 
 /**
  * Execute a kernel transaction from start to outcome determination.
