@@ -105,35 +105,39 @@ test: unit integration ref
 # ---- Unit tests ----
 unit: $(BUILD)/test_warehouse $(BUILD)/test_tlv_encode \
       $(BUILD)/test_bitmap $(BUILD)/test_ctq_parse \
-      $(BUILD)/test_sha1 $(BUILD)/test_risk_k7
+      $(BUILD)/test_sha1 $(BUILD)/test_risk_k7 $(BUILD)/test_kernel_boundary
 	@echo ""
 	@echo "=== Unit Tests ==="
 	@failed=0; \
 	for t in $(BUILD)/test_warehouse $(BUILD)/test_tlv_encode \
 	         $(BUILD)/test_bitmap $(BUILD)/test_ctq_parse \
-	         $(BUILD)/test_sha1 $(BUILD)/test_risk_k7; do \
+	         $(BUILD)/test_sha1 $(BUILD)/test_risk_k7 $(BUILD)/test_kernel_boundary; do \
 	  if $$t > /dev/null 2>&1; then \
 	    echo "  PASS  $$t"; \
 	  else \
 	    echo "  FAIL  $$t"; failed=1; \
 	  fi; \
 	done; \
-	echo ""; echo "Unit: 6 passed, $$failed failed"; \
+	echo ""; echo "Unit: 7 passed, $$failed failed"; \
 	exit $$failed
 
 # ---- Integration tests ----
-integration: $(BUILD)/test_k3_e2e $(BUILD)/test_k5_e2e $(BUILD)/test_k7_e2e $(BUILD)/test_iccdb_update
+integration: $(BUILD)/test_k3_e2e $(BUILD)/test_k5_e2e $(BUILD)/test_k7_e2e \
+             $(BUILD)/test_iccdb_update $(BUILD)/test_negative_paths \
+             $(BUILD)/test_orchestrator_verify
 	@echo ""
 	@echo "=== Integration Tests ==="
 	@failed=0; \
-	for t in $(BUILD)/test_k3_e2e $(BUILD)/test_k5_e2e $(BUILD)/test_k7_e2e $(BUILD)/test_iccdb_update; do \
+	for t in $(BUILD)/test_k3_e2e $(BUILD)/test_k5_e2e $(BUILD)/test_k7_e2e \
+	         $(BUILD)/test_iccdb_update $(BUILD)/test_negative_paths \
+	         $(BUILD)/test_orchestrator_verify; do \
 	  if $$t > /dev/null 2>&1; then \
 	    echo "  PASS  $$t"; \
 	  else \
 	    echo "  FAIL  $$t"; failed=1; \
 	  fi; \
 	done; \
-	echo ""; echo "Integration: 4 passed, $$failed failed"; \
+	echo ""; echo "Integration: 6 passed, $$failed failed"; \
 	exit $$failed
 
 # ---- Reference examples ----
@@ -185,6 +189,9 @@ $(BUILD)/test_risk_k7: $(UNIT)/test_risk_plugin_k7.c \
                        $(TEST_H)/host_platform.c | $(BUILD)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
+$(BUILD)/test_kernel_boundary: $(UNIT)/test_kernel_boundary.c $(HOST_LIB) | $(BUILD)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
 # ---- Integration tests (full kernel library) ----
 $(BUILD)/test_k3_e2e: $(INTEG)/test_k3_e2e.c $(HOST_LIB) | $(BUILD)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
@@ -196,6 +203,12 @@ $(BUILD)/test_k7_e2e: $(INTEG)/test_k7_e2e.c $(HOST_LIB) | $(BUILD)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 $(BUILD)/test_iccdb_update: $(INTEG)/test_iccdb_update.c $(HOST_LIB) | $(BUILD)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+$(BUILD)/test_negative_paths: $(INTEG)/test_negative_paths.c $(HOST_LIB) | $(BUILD)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+$(BUILD)/test_orchestrator_verify: $(INTEG)/test_orchestrator_verify.c $(HOST_LIB) | $(BUILD)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 # ---- Reference examples (full kernel library + ref-specific files) ----
