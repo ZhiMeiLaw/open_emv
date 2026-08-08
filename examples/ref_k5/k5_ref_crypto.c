@@ -52,14 +52,12 @@
  * @return 0 on success, negative on failure
  */
 static int k5_cda_rsa_pkpad_verify(
-    const uint8_t *ca_cert_der, size_t ca_cert_len,
-    const uint8_t *icc_cert_der, size_t icc_cert_len,
+    const uint8_t *cert_der, size_t cert_len,
     const uint8_t *ddic, size_t ddic_len,
-    const uint8_t *cdol2_data, size_t cdol2_len,
-    const uint8_t *sdad, size_t sdad_len)
+    const uint8_t *data, size_t data_len)
 {
-    if (!ddic || !cdol2_data || !sdad) return CRYPTO_E_INVAL;
-    if (ddic_len == 0 || cdol2_len == 0 || sdad_len == 0) {
+    if (!ddic || !data) return CRYPTO_E_INVAL;
+    if (ddic_len == 0 || data_len == 0) {
         return CRYPTO_E_INVAL;
     }
 
@@ -83,10 +81,10 @@ static int k5_cda_rsa_pkpad_verify(
      */
 
     /* Mock: validate inputs and return success */
-    (void)ca_cert_der; (void)ca_cert_len;
-    (void)icc_cert_der; (void)icc_cert_len;
-    (void)cdol2_data; (void)cdol2_len;
-    (void)sdad; (void)sdad_len;
+    (void)cert_der; (void)cert_len;
+    
+    
+    
 
     return EMV_E_OK;
 }

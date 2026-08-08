@@ -56,30 +56,11 @@ static void k7_init(void)
 }
 
 /* ================================================================== */
-/*  POS parameter initialization (defaults for integration)           */
-/* ================================================================== */
-
-void pos_params_init_defaults_k7(void)
-{
-    /* This would set default terminal POS parameters.
-     * In a real implementation, these would be loaded from secure storage.
-     */
-    (void)0; /* Placeholder - integrator provides implementation */
-}
-
-/* ================================================================== */
 /*  Main Transaction Execution                                        */
 /* ================================================================== */
 
 /**
  * Execute a complete K7 token transaction.
- *
- * @param icr              IC Reader Provider (user-implemented)
- * @param pos_params       Terminal configuration for K7 (token-specific)
- * @param tc_out           On output: Terminal Conduction TLV bytes (or NASP)
- * @param tc_len           In/out: max output size → actual output size
- * @param outcome          On output: transaction result code
- * @return 0 on success, negative error code on failure
  */
 int k7_execute_transaction(const struct ic_reader_provider_s *icr,
                            const pos_params_k7_t *pos_params,

@@ -18,6 +18,7 @@
 #include "emv_kernel/warehouse.h"
 #include "emv_kernel/errors.h"
 #include <string.h>
+extern void pos_params_init_defaults_k5(void);
 
 /* ================================================================== */
 /*  POS Terminal Parameters — static store                            */

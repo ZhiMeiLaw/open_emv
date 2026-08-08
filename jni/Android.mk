@@ -151,7 +151,7 @@ LOCAL_SRC_FILES := \
     $(ROOT_PATH)/examples/ref_k7/k7_ref_transaction.c \
     $(ROOT_PATH)/examples/ref_k7/k7_ref_platform.c \
     $(ROOT_PATH)/examples/ref_k7/k7_ref_icr_mock.c \
-    $(ROOT_PATH)/examples/ref_k7/k7_ref_crypto.c
+    $(ROOT_PATH)/examples/ref_k7/k7_ref_crypto.c \
     $(ROOT_PATH)/examples/ref_k7/kernel7_process.c
 LOCAL_C_INCLUDES += $(ROOT_PATH)/include
 LOCAL_CFLAGS    += -std=c99 -pedantic -Wall -Wno-unused-parameter -Wno-unused-variable
@@ -214,6 +214,46 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE    := test_k7_e2e
 LOCAL_SRC_FILES := $(ROOT_PATH)/tests/integration/test_k7_e2e.c
+LOCAL_C_INCLUDES += $(ROOT_PATH)/include
+LOCAL_CFLAGS    += -std=c99 -pedantic -Wall -Wno-unused-parameter -Wno-unused-variable
+LOCAL_STATIC_LIBRARIES := emv_kernel_static
+
+include $(BUILD_EXECUTABLE)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE    := test_iccdb_update
+LOCAL_SRC_FILES := $(ROOT_PATH)/tests/integration/test_iccdb_update.c
+LOCAL_C_INCLUDES += $(ROOT_PATH)/include
+LOCAL_CFLAGS    += -std=c99 -pedantic -Wall -Wno-unused-parameter -Wno-unused-variable
+LOCAL_STATIC_LIBRARIES := emv_kernel_static
+
+include $(BUILD_EXECUTABLE)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE    := test_negative_paths
+LOCAL_SRC_FILES := $(ROOT_PATH)/tests/integration/test_negative_paths.c
+LOCAL_C_INCLUDES += $(ROOT_PATH)/include
+LOCAL_CFLAGS    += -std=c99 -pedantic -Wall -Wno-unused-parameter -Wno-unused-variable
+LOCAL_STATIC_LIBRARIES := emv_kernel_static
+
+include $(BUILD_EXECUTABLE)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE    := test_orchestrator_verify
+LOCAL_SRC_FILES := $(ROOT_PATH)/tests/integration/test_orchestrator_verify.c
+LOCAL_C_INCLUDES += $(ROOT_PATH)/include
+LOCAL_CFLAGS    += -std=c99 -pedantic -Wall -Wno-unused-parameter -Wno-unused-variable
+LOCAL_STATIC_LIBRARIES := emv_kernel_static
+
+include $(BUILD_EXECUTABLE)
+
+include $(CLEAR_VARS)
+
+LOCAL_MODULE    := test_kernel_boundary
+LOCAL_SRC_FILES := $(ROOT_PATH)/tests/unit/test_kernel_boundary.c
 LOCAL_C_INCLUDES += $(ROOT_PATH)/include
 LOCAL_CFLAGS    += -std=c99 -pedantic -Wall -Wno-unused-parameter -Wno-unused-variable
 LOCAL_STATIC_LIBRARIES := emv_kernel_static

@@ -88,10 +88,10 @@ static int kernel3_risk_update_iccdb(void *iccdb_ptr, const void *ctx_ptr)
     if (!iccdb_ptr || !ctx_ptr) return PLAT_E_INVAL;
 
     const orchestrator_ctx_t *oc = (const orchestrator_ctx_t *)ctx_ptr;
-    if (!oc || !oc->input_wh) return PLAT_E_INVAL;
+    if (!oc || oc->input_wh.count == 0) return PLAT_E_INVAL;
 
     uint8_t card_hash[8];
-    orchestrator_compute_card_hash(oc->input_wh, card_hash);
+    orchestrator_compute_card_hash(&oc->input_wh, card_hash);
 
     /* Read current HF counter, increment, write back */
     uint8_t hf[2] = {0};

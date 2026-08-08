@@ -663,7 +663,7 @@ static int ref_des_decrypt(
     for (size_t i = 0; i < blocks; i++) {
         uint8_t in[8], out_block[8];
         memcpy(in, ic_data + i * 8, 8);
-        des_ecb_block((const uint8_t(*)[8])key, in, out_block);
+        des_ecb_block(key, in, out_block);
         memcpy(out + i * 8, out_block, 8);
     }
 
@@ -691,7 +691,7 @@ static int ref_tdes_mac_verify(
     if (mac_len != 8) return CRYPTO_E_INVAL;
 
     uint8_t mac[8];
-    tdes_cmac_compute((const uint8_t(*)[8])key, data, data_len, mac);
+    tdes_cmac_compute(key, data, data_len, mac);
     return memcmp(expected_mac, mac, mac_len) == 0 ? EMV_E_OK : CRYPTO_E_MAC;
 }
 
@@ -718,7 +718,7 @@ static int ref_generate_cryptogram(crypto_alg_t alg,
         while (plen % 8 != 0) padded[plen++] = 0x00;
     }
 
-    tdes_cmac_compute((const uint8_t(*)[8])key, padded, plen, cryptogram);
+    tdes_cmac_compute(key, padded, plen, cryptogram);
     if (cryptogram_len) *cryptogram_len = 8;
     (void)alg;
 

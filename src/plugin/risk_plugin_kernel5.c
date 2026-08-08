@@ -15,6 +15,7 @@
 #include "emv_kernel/bitmap.h"
 #include "emv_kernel/errors.h"
 #include "emv_kernel/tlv_encode.h"
+#include "emv_kernel/platform.h"
 #include "emv_kernel/orchestrator.h"
 
 static risk_result_t kernel5_risk_check(const void *ctx_ptr, risk_check_type_t type)
@@ -64,10 +65,10 @@ static int kernel5_risk_update_iccdb(void *iccdb_ptr, const void *ctx_ptr)
     if (!iccdb_ptr || !ctx_ptr) return PLAT_E_INVAL;
 
     const orchestrator_ctx_t *oc = (const orchestrator_ctx_t *)ctx_ptr;
-    if (!oc || !oc->input_wh) return PLAT_E_INVAL;
+    if (!oc || oc->input_wh.count == 0) return PLAT_E_INVAL;
 
     uint8_t card_hash[8];
-    orchestrator_compute_card_hash(oc->input_wh, card_hash);
+    orchestrator_compute_card_hash(&oc->input_wh, card_hash);
 
     /* Increment HF counter (K5 minimal update — no CRM/VEL) */
     uint8_t hf[2] = {0};

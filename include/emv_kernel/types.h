@@ -274,6 +274,7 @@ typedef struct {
 /*  Kernel config — plugin pointers plus metadata                     */
 /* ------------------------------------------------------------------ */
 /* kernel_ops_t defined in kernel_interface.h */
+struct kernel_ops_s;
 
 typedef struct {
     uint8_t  kernel_id;               /* 3, 4, 5, 6, 7, ...               */

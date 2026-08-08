@@ -73,6 +73,7 @@ HOST_LIB := $(CORE_SRC) $(UTIL_SRC) $(DICT_SRC) $(PLUGIN_SRC) \
 
 # ---- Minimal library for lightweight unit tests ----
 LIGHT_LIB := $(SRC)/core/warehouse.c \
+             $(SRC)/utils/tlv_encode.c \
              $(SRC)/utils/bitmap.c \
              $(TEST_H)/host_platform.c
 
@@ -185,6 +186,10 @@ $(BUILD)/test_sha1: $(UNIT)/test_sha1.c $(TEST_H)/host_platform.c | $(BUILD)
 $(BUILD)/test_risk_k7: $(UNIT)/test_risk_plugin_k7.c \
                        $(SRC)/plugin/risk_plugin_kernel7.c \
                        $(SRC)/core/warehouse.c \
+                       $(SRC)/core/kernel_registry.c \
+                       $(SRC)/core/orchestrator.c \
+                       $(SRC)/core/dict_validate.c \
+                       $(SRC)/utils/tlv_encode.c \
                        $(SRC)/utils/bitmap.c \
                        $(TEST_H)/host_platform.c | $(BUILD)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)

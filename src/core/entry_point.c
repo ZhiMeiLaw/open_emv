@@ -289,8 +289,9 @@ int entry_point_activate_kernel(ep_context_t *ctx)
      * In production: call param_read() for each required tag, or load
      * from a pre-initialised parameter store.
      *
-     * Example:
-     *   uint8_t tc[] = { 0x06, 0x08 }; /* GB */
+     * Example (pseudocode for integrator):
+     *   uint8_t tc[2] = { 0x06, 0x08 };
+     *   uint8_t buf[16]; uint8_t blen = sizeof(buf);
      *   param_read(0x9F1A, buf, &blen);
      *   tlv_store_set(ctx->wh, 0x9F1A, buf, blen);
      */

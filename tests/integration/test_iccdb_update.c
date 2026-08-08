@@ -146,7 +146,7 @@ TEST(test_orchestrator_calls_update_iccdb_on_approve) {
     /* Case 1: iccdb = NULL → should not call update_iccdb (skip gracefully) */
     orchestrator_ctx_t oc;
     orchestrator_init(&oc, NULL, NULL, NULL, NULL);
-    oc.input_wh = &wh;
+    oc.input_wh = wh;
     oc.iccdb = NULL;  /* No ICCDB */
 
     /* orchestrator_execute will run CVM/Risk checks with stubs,

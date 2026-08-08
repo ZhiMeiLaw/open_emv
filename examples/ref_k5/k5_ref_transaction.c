@@ -240,7 +240,7 @@ outcome_code_t k5_parse_generate_ac_response(const uint8_t *resp, uint8_t resp_l
     tx_warehouse_t resp_wh;
     uint8_t resp_pool[256];
     tlv_warehouse_init(&resp_wh, resp_pool, sizeof(resp_pool));
-    tlv_parse_raw(&resp_wh, resp, resp_len);
+    tlv_parse_raw(resp, resp_len, &resp_wh);
 
     const tlv_entry_t *cid = tlv_find(&resp_wh, 0x9F27);
     if (cid && cid->len >= 1) {

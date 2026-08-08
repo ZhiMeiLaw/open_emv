@@ -17,6 +17,7 @@
 #include "emv_kernel/warehouse.h"
 #include "emv_kernel/errors.h"
 #include <string.h>
+typedef struct { uint8_t sds_code; uint8_t tip_signature_supported:1; uint8_t tip_online_pin_supported:1; uint32_t unsigned_limit; uint32_t signed_limit; uint8_t pin_key_index; } pos_params_k7_t;
 #include <stdlib.h>
 
 /* ================================================================== */

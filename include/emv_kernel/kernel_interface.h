@@ -159,7 +159,7 @@ typedef struct {
  * Return 0 on success, negative on failure (outcome is handled
  * internally by the framework based on the return code).
  */
-typedef struct {
+typedef struct kernel_ops_s {
     /**
      * Processing Restrictions check (Book C-3 §5.5).
      * Called after Card Read Complete, before Offline Data Auth.
