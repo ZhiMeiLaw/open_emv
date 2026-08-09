@@ -51,18 +51,22 @@ UTIL_SRC := \
 DICT_SRC := \
 	$(SRC)/dict/kernel3_dict.c \
 	$(SRC)/dict/kernel5_dict.c \
+	$(SRC)/dict/kernel6_dict.c \
 	$(SRC)/dict/kernel7_dict.c
 
 PLUGIN_SRC := \
 	$(SRC)/plugin/crypto_driver_ref.c \
 	$(SRC)/plugin/cvm_plugin_kernel3.c \
 	$(SRC)/plugin/cvm_plugin_kernel5.c \
+	$(SRC)/plugin/cvm_plugin_kernel6.c \
 	$(SRC)/plugin/cvm_plugin_kernel7.c \
 	$(SRC)/plugin/risk_plugin_kernel3.c \
 	$(SRC)/plugin/risk_plugin_kernel5.c \
+	$(SRC)/plugin/risk_plugin_kernel6.c \
 	$(SRC)/plugin/risk_plugin_kernel7.c \
 	$(SRC)/plugin/kernel_ops_kernel3.c \
 	$(SRC)/plugin/kernel_ops_kernel5.c \
+	$(SRC)/plugin/kernel_ops_kernel6.c \
 	$(SRC)/plugin/kernel_ops_kernel7.c
 
 # ---- Library for integration + lightweight unit tests ----
@@ -96,7 +100,7 @@ endif
 # ====================================================================
 # Phony targets
 # ====================================================================
-.PHONY: all test unit integration ref ref-k3 ref-k5 ref-k7 clean
+.PHONY: all test unit integration ref ref-k3 ref-k5 ref-k6 ref-k7 clean
 
 all: test
 
@@ -123,13 +127,13 @@ unit: $(BUILD)/test_warehouse $(BUILD)/test_tlv_encode \
 	exit $$failed
 
 # ---- Integration tests ----
-integration: $(BUILD)/test_k3_e2e $(BUILD)/test_k5_e2e $(BUILD)/test_k7_e2e \
+integration: $(BUILD)/test_k3_e2e $(BUILD)/test_k5_e2e $(BUILD)/test_k6_e2e $(BUILD)/test_k7_e2e \
              $(BUILD)/test_iccdb_update $(BUILD)/test_negative_paths \
              $(BUILD)/test_orchestrator_verify
 	@echo ""
 	@echo "=== Integration Tests ==="
 	@failed=0; \
-	for t in $(BUILD)/test_k3_e2e $(BUILD)/test_k5_e2e $(BUILD)/test_k7_e2e \
+	for t in $(BUILD)/test_k3_e2e $(BUILD)/test_k5_e2e $(BUILD)/test_k6_e2e $(BUILD)/test_k7_e2e \
 	         $(BUILD)/test_iccdb_update $(BUILD)/test_negative_paths \
 	         $(BUILD)/test_orchestrator_verify; do \
 	  if $$t > /dev/null 2>&1; then \
@@ -138,11 +142,11 @@ integration: $(BUILD)/test_k3_e2e $(BUILD)/test_k5_e2e $(BUILD)/test_k7_e2e \
 	    echo "  FAIL  $$t"; failed=1; \
 	  fi; \
 	done; \
-	echo ""; echo "Integration: 6 passed, $$failed failed"; \
+	echo ""; echo "Integration: 7 passed, $$failed failed"; \
 	exit $$failed
 
 # ---- Reference examples ----
-ref: ref-k3 ref-k5 ref-k7
+ref: ref-k3 ref-k5 ref-k6 ref-k7
 
 ref-k3: $(BUILD)/ref_k3
 	@echo ""
@@ -153,6 +157,11 @@ ref-k5: $(BUILD)/ref_k5
 	@echo ""
 	@echo "=== Reference: K5 Transaction ==="
 	$(BUILD)/ref_k5
+
+ref-k6: $(BUILD)/ref_k6
+	@echo ""
+	@echo "=== Reference: K6 Transaction ==="
+	$(BUILD)/ref_k6
 
 ref-k7: $(BUILD)/ref_k7
 	@echo ""
@@ -207,6 +216,9 @@ $(BUILD)/test_k5_e2e: $(INTEG)/test_k5_e2e.c $(HOST_LIB) | $(BUILD)
 $(BUILD)/test_k7_e2e: $(INTEG)/test_k7_e2e.c $(HOST_LIB) | $(BUILD)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
+$(BUILD)/test_k6_e2e: $(INTEG)/test_k6_e2e.c $(HOST_LIB) | $(BUILD)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
 $(BUILD)/test_iccdb_update: $(INTEG)/test_iccdb_update.c $(HOST_LIB) | $(BUILD)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
@@ -241,6 +253,15 @@ $(BUILD)/ref_k7: \
 	$(REF)/ref_k7/k7_ref_platform.c \
 	$(REF)/ref_k7/k7_ref_icr_mock.c \
 	$(REF)/ref_k7/kernel7_process.c \
+	$(CORE_SRC) $(UTIL_SRC) $(DICT_SRC) $(PLUGIN_SRC) | $(BUILD)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+$(BUILD)/ref_k6: \
+	$(REF)/ref_k6/k6_ref_transaction.c \
+	$(REF)/ref_k6/k6_ref_crypto.c \
+	$(REF)/ref_k6/k6_ref_platform.c \
+	$(REF)/ref_k6/k6_ref_icr_mock.c \
+	$(REF)/ref_k6/kernel6_process.c \
 	$(CORE_SRC) $(UTIL_SRC) $(DICT_SRC) $(PLUGIN_SRC) | $(BUILD)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
